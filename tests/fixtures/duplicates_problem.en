@@ -1,0 +1,4 @@
+import codeinpython library
+# Check whether the list contains a duplicate value.
+# Example input: {"nums":[1,2,1]}
+# Example output: true

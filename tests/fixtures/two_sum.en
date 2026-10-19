@@ -1,0 +1,28 @@
+# Find two values that add up to the target and display their indices.
+make an empty list called nums
+add 2 to nums
+add 7 to nums
+add 11 to nums
+add 15 to nums
+set target to 9
+set answer to none
+make an empty dictionary called seen
+set index to 0
+for each number in nums
+if answer is none then
+set complement to target minus number
+if complement is in seen then
+make an empty list called answer
+add seen at complement to answer
+add index to answer
+otherwise
+set seen at number to index
+end if
+set index to index plus 1
+end if
+end for
+if answer is none then
+show "No pair found"
+otherwise
+show answer
+end if

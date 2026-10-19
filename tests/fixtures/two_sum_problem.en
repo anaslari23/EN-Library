@@ -1,0 +1,7 @@
+import codeinpython library
+
+# Given a list of numbers and a target,
+# return the positions of two numbers that add up to the target.
+# Exactly one solution exists and the same position cannot be used twice.
+# Example input: {"nums":[2,7,11,15],"target":9}
+# Example output: [0,1]

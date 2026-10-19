@@ -1,0 +1,4 @@
+import codeinpython library
+# Find the target in a sorted list and return its index, or -1 if absent.
+# Example input: {"nums":[1,4,8,12],"target":8}
+# Example output: 2

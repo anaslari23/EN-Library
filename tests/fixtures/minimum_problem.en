@@ -1,0 +1,4 @@
+import codeinpython library
+# Return the smallest number in the list.
+# Example input: {"nums":[1,9,4]}
+# Example output: 1

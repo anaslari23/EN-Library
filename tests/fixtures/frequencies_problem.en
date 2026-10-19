@@ -1,0 +1,4 @@
+import codeinpython library
+# Return how many times each number occurs in the list.
+# Example input: {"nums":[1,2,1]}
+# Example output: {"1":2,"2":1}

@@ -1,0 +1,11 @@
+# Classes, instance fields, methods, and return values.
+define a class called Greeter
+define a method called greet with parameter prefix
+return prefix plus self.name
+end method
+end class
+
+make a Greeter called greeter
+set greeter.name to "Ada"
+set greeting to call greeter.greet with "Hello "
+show greeting

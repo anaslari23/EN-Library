@@ -1,0 +1,4 @@
+import codeinpython library
+# Determine if all brackets and braces are properly matched.
+# Example input: {"text":"{[()]}"}
+# Example output: true

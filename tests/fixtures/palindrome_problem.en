@@ -1,0 +1,4 @@
+import codeinpython library
+# Check whether the text reads the same forward and backward.
+# Example input: {"text":"abba"}
+# Example output: true

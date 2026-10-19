@@ -1,0 +1,4 @@
+import codeinpython library
+# Calculate the sum of all numbers in the list.
+# Example input: {"nums":[1,2,3]}
+# Example output: 6

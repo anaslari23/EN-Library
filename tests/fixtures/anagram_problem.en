@@ -1,0 +1,4 @@
+import codeinpython library
+# Check whether two strings are anagrams.
+# Example input: {"first":"listen","second":"silent"}
+# Example output: true

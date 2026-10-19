@@ -1,0 +1,4 @@
+import codeinpython library
+# Reverse the given text.
+# Example input: {"text":"hello"}
+# Example output: "olleh"
