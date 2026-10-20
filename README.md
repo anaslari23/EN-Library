@@ -5,7 +5,7 @@
 ## Install from this repository
 
 ```sh
-python3 -m pip install git+https://github.com/anaslari23/EN-Library.git
+python3 -m pip install git+https://github.com/anaslari23/EN-Library.git@feat/en-architecture
 ```
 
 For a local checkout, run `python3 -m pip install .` from the checkout. Then use the library from Python:
@@ -18,7 +18,7 @@ output_path = codeinenglish.solve_file("problem.en")
 output_path = codeinenglish.generate_file("program.en")
 ```
 
-`generate_file` selects the comment-based problem solver when the source contains the exact `import codeinpython library` directive; other `.en` sources go through the instruction translator. It writes a sibling `.py` file by default and never executes it.
+`generate_file` accepts a standalone `target python` directive. A comment-only file after that directive is a problem request; a file with English instruction lines uses the instruction translator and treats comments as documentation. Existing `import codeinpython library` problem files remain valid, as do instruction files without a directive. It writes a sibling `.py` file by default and never executes it. A Python `import codeinenglish` only loads the API; call `generate_file` explicitly to translate.
 
 Public API: `CodeInEnglishError`, `translate`, `translate_file`, `solve`, `solve_file`, and `generate_file`.
 
@@ -30,12 +30,12 @@ python3 -m codeinenglish solve problem.en
 python3 -m codeinenglish generate any_program.en
 ```
 
-`generate` is the normal one-command workflow: it selects the problem solver when the exact library directive is present and otherwise translates supported instruction-language statements. `translate` and `solve` remain available for explicit use. All commands write Python beside the source file (or to `--output`); generated code is syntax-checked and never run by the generator. Review it before executing.
+`generate` is the normal one-command workflow: it selects the problem solver for a `target python` comment request or the legacy library directive, and otherwise translates supported English instructions. `translate` and `solve` remain available for explicit use. All commands write Python beside the source file (or to `--output`); generated code is syntax-checked and never run by the generator. Review it before executing.
 
 A problem file can look like:
 
 ```text
-import codeinpython library
+target python
 # Find two numbers that add up to the target.
 # Return their indices. Exactly one solution exists.
 ```

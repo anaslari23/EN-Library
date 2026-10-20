@@ -93,6 +93,15 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result, 0)
             self.assertIn("def two_sum(nums, target):", source.with_suffix(".py").read_text(encoding="utf-8"))
 
+    def test_generate_command_accepts_python_target_directive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "greeting.en"
+            source.write_text('target python\nshow "Hello"', encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = main(["generate", str(source)])
+            self.assertEqual(result, 0)
+            self.assertEqual(source.with_suffix(".py").read_text(encoding="utf-8"), "print('Hello')\n")
+
     def test_generate_command_uses_explicit_output_path(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "greeting.en"

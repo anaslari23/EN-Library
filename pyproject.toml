@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "codeinenglish"
-version = "0.1.1"
+version = "0.1.2"
 description = "A tiny offline English-like programming language"
 requires-python = ">=3.10"
 dependencies = []

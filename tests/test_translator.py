@@ -144,6 +144,40 @@ class TranslateFileTests(unittest.TestCase):
             self.assertEqual(output, source.with_suffix(".py"))
             self.assertEqual(output.read_text(encoding="utf-8"), "print('Hello')\n")
 
+    def test_generate_file_accepts_python_target_with_instructions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "greeting.en"
+            source.write_text('target python\n# A greeting\nshow "Hello"', encoding="utf-8")
+            output = generate_file(source)
+            self.assertEqual(output.read_text(encoding="utf-8"), "print('Hello')\n")
+
+    def test_generate_file_accepts_python_target_with_comment_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "pair.en"
+            source.write_text(
+                "target python\n"
+                "# Find two numbers that add up to the target and return their indices.\n"
+                "# Exactly one solution exists; do not reuse an element.\n",
+                encoding="utf-8",
+            )
+            output = generate_file(source)
+            self.assertIn("def two_sum(nums, target):", output.read_text(encoding="utf-8"))
+
+    def test_generate_file_rejects_invalid_target_without_overwriting(self):
+        for text, line in (("target javascript\nshow 1", 1),
+                           ("target python\ntarget javascript\nshow 1", 2),
+                           ("target python\ntarget python\nshow 1", 2)):
+            with self.subTest(text=text), tempfile.TemporaryDirectory() as directory:
+                source = Path(directory) / "program.en"
+                output = source.with_suffix(".py")
+                source.write_text(text, encoding="utf-8")
+                output.write_text("old source", encoding="utf-8")
+                with self.assertRaises(CodeInEnglishError) as caught:
+                    generate_file(source)
+                self.assertEqual(caught.exception.filename, str(source))
+                self.assertEqual(caught.exception.line, line)
+                self.assertEqual(output.read_text(encoding="utf-8"), "old source")
+
     def test_generate_file_respects_explicit_output_path(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "greeting.en"
