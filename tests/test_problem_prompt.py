@@ -2,10 +2,15 @@ import unittest
 import json
 
 from codeinenglish.errors import CodeInEnglishError
-from codeinenglish.problem_prompt import ProblemPrompt, extract_problem_prompt
+from codeinenglish.problem_prompt import ProblemPrompt, extract_problem_prompt, has_problem_directive
 
 
 class ExtractProblemPromptTests(unittest.TestCase):
+    def test_detects_exact_problem_library_directive(self):
+        self.assertTrue(has_problem_directive("\nimport codeinpython library\n# Find a pair.\n"))
+        self.assertFalse(has_problem_directive("# import codeinpython library\nshow 1"))
+        self.assertFalse(has_problem_directive("import codeinpython\nlibrary"))
+
     def test_extracts_comment_text_and_maps_source_lines(self):
         prompt = extract_problem_prompt(
             "import codeinpython library\n\n# Find two values\n# that sum to a target.\n",

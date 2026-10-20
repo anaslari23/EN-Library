@@ -21,6 +21,27 @@ class RecognizeProblemTests(unittest.TestCase):
                 self.assertEqual([item.name for item in spec.inputs], ["nums", "target"])
                 self.assertEqual(spec.result, "indices")
 
+    def test_paraphrases_produce_same_problem_spec(self):
+        first = self.recognize(
+            "Given an array of integers nums and a target, return the indices of two numbers that add up to target. Exactly one solution exists and do not reuse an element."
+        )
+        second = self.recognize(
+            "Find the positions of two different values in a list whose total equals the target number. Exactly one pair exists."
+        )
+        self.assertEqual(first.family, second.family)
+        self.assertEqual(first.inputs, second.inputs)
+        self.assertEqual(first.result, second.result)
+        self.assertEqual(first.constraints, second.constraints)
+
+    def test_negation_and_result_qualifiers_are_preserved(self):
+        for prompt in (
+            "Find two numbers that do not add up to target and return their indices.",
+            "Find every pair of numbers that add up to target and return all matching indices.",
+            "Do not reverse the text.",
+        ):
+            with self.subTest(prompt=prompt), self.assertRaises(CodeInEnglishError):
+                self.recognize(prompt)
+
     def test_recognizes_duplicate_and_frequency_requests(self):
         cases = (
             ("Determine whether any value appears more than once in the list.", ProblemFamily.DUPLICATES),

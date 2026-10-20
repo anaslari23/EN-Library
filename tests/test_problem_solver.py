@@ -6,12 +6,26 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from codeinenglish import solve, solve_file
+from codeinenglish import generate_file, solve, solve_file
 from codeinenglish.errors import CodeInEnglishError
 from codeinenglish.problem_prompt import extract_problem_prompt
 
 
 class ProblemSolverTests(unittest.TestCase):
+    def test_conflicting_constraints_preserve_existing_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "ambiguous.en"
+            output = source.with_suffix(".py")
+            source.write_text(
+                "import codeinpython library\n"
+                "# Check if the text is a palindrome, case-sensitive and ignoring case.\n",
+                encoding="utf-8",
+            )
+            output.write_text("old source", encoding="utf-8")
+            with self.assertRaises(CodeInEnglishError):
+                generate_file(source)
+            self.assertEqual(output.read_text(encoding="utf-8"), "old source")
+
     def test_generated_program_reads_json_and_writes_json(self):
         source = solve("# Find two numbers that add up to target and return their indices. Exactly one solution exists.")
         with tempfile.TemporaryDirectory() as directory:

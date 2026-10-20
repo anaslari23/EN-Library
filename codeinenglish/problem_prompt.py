@@ -4,6 +4,8 @@ import re
 
 from .errors import CodeInEnglishError
 
+LIBRARY_DIRECTIVE = "import codeinpython library"
+
 
 @dataclass(frozen=True)
 class ProblemPrompt:
@@ -19,6 +21,11 @@ class ProblemExample:
     source_line: int
 
 
+def has_problem_directive(source: str) -> bool:
+    """Return whether the source contains the exact Code in English problem directive."""
+    return any(line.strip() == LIBRARY_DIRECTIVE for line in source.splitlines())
+
+
 def extract_problem_prompt(source: str, filename: str = "<string>") -> ProblemPrompt:
     """Extract a problem statement from comment lines in an ``.en`` file."""
     lines: list[tuple[str, int]] = []
@@ -28,7 +35,7 @@ def extract_problem_prompt(source: str, filename: str = "<string>") -> ProblemPr
         stripped = original.strip()
         if not stripped:
             continue
-        if stripped == "import codeinpython library":
+        if stripped == LIBRARY_DIRECTIVE:
             if directive_seen:
                 raise CodeInEnglishError(filename, line_number, "library directive may appear only once")
             directive_seen = True

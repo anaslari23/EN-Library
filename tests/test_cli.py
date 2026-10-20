@@ -70,6 +70,40 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result, 0)
             self.assertIn("def calculate_sum", source.with_suffix(".py").read_text(encoding="utf-8"))
 
+    def test_generate_command_dispatches_instruction_program(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "greeting.en"
+            source.write_text('show "Hello"', encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = main(["generate", str(source)])
+            self.assertEqual(result, 0)
+            self.assertEqual(source.with_suffix(".py").read_text(encoding="utf-8"), "print('Hello')\n")
+
+    def test_generate_command_dispatches_problem_directive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "pair.en"
+            source.write_text(
+                "import codeinpython library\n"
+                "# Find two numbers that add up to the target and return their indices.\n"
+                "# Exactly one solution exists; do not reuse an element.\n",
+                encoding="utf-8",
+            )
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = main(["generate", str(source)])
+            self.assertEqual(result, 0)
+            self.assertIn("def two_sum(nums, target):", source.with_suffix(".py").read_text(encoding="utf-8"))
+
+    def test_generate_command_uses_explicit_output_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "greeting.en"
+            output = Path(directory) / "result.py"
+            source.write_text('show "Hello"', encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = main(["generate", str(source), "--output", str(output)])
+            self.assertEqual(result, 0)
+            self.assertTrue(output.exists())
+            self.assertFalse(source.with_suffix(".py").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,6 +4,7 @@ import sys
 from .errors import CodeInEnglishError
 from .translator import translate_file
 from .problem_solver import solve_file
+from .interpreter import generate_file
 
 
 def _argument_parser() -> argparse.ArgumentParser:
@@ -15,6 +16,9 @@ def _argument_parser() -> argparse.ArgumentParser:
     solve = commands.add_parser("solve", help="generate Python from an .en problem statement")
     solve.add_argument("source", help="comment-based problem source file")
     solve.add_argument("--output", help="Python output path (defaults to the same name with .py)")
+    generate = commands.add_parser("generate", help="generate Python from any supported .en file")
+    generate.add_argument("source", help="Code in English source file")
+    generate.add_argument("--output", help="Python output path (defaults to the same name with .py)")
     return parser
 
 
@@ -25,7 +29,12 @@ def main(argv: list[str] | None = None) -> int:
         return int(error.code)
 
     try:
-        output_path = (translate_file if arguments.command == "translate" else solve_file)(arguments.source, arguments.output)
+        command = {
+            "translate": translate_file,
+            "solve": solve_file,
+            "generate": generate_file,
+        }[arguments.command]
+        output_path = command(arguments.source, arguments.output)
     except (OSError, UnicodeError, CodeInEnglishError) as error:
         print(error, file=sys.stderr)
         return 1

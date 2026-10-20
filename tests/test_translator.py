@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from codeinenglish import CodeInEnglishError, translate, translate_file
+from codeinenglish import CodeInEnglishError, generate_file, translate, translate_file
 
 
 class TranslateTests(unittest.TestCase):
@@ -135,6 +135,54 @@ class TranslateFileTests(unittest.TestCase):
     def test_generated_source_parses(self):
         source = translate('set value to 1 plus 2\nshow value')
         ast.parse(source)
+
+    def test_generate_file_dispatches_instruction_programs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "greeting.en"
+            source.write_text('show "Hello"', encoding="utf-8")
+            output = generate_file(source)
+            self.assertEqual(output, source.with_suffix(".py"))
+            self.assertEqual(output.read_text(encoding="utf-8"), "print('Hello')\n")
+
+    def test_generate_file_respects_explicit_output_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "greeting.en"
+            output = Path(directory) / "generated.py"
+            source.write_text('show "Hello"', encoding="utf-8")
+            self.assertEqual(generate_file(source, output), output)
+            self.assertEqual(output.read_text(encoding="utf-8"), "print('Hello')\n")
+
+    def test_generate_file_rejects_source_as_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "greeting.en"
+            source.write_text('show "Hello"', encoding="utf-8")
+            with self.assertRaises(CodeInEnglishError):
+                generate_file(source, source)
+            self.assertEqual(source.read_text(encoding="utf-8"), 'show "Hello"')
+
+    def test_generate_file_dispatches_problem_directive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "pair.en"
+            source.write_text(
+                "import codeinpython library\n"
+                "# Find two numbers that add up to the target and return their indices.\n"
+                "# Exactly one solution exists; do not reuse an element.\n",
+                encoding="utf-8",
+            )
+            output = generate_file(source)
+            generated = output.read_text(encoding="utf-8")
+            self.assertIn("def two_sum(nums, target):", generated)
+            self.assertNotIn("import codeinpython library", generated)
+
+    def test_generate_file_preserves_existing_output_on_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "bad.en"
+            output = source.with_suffix(".py")
+            source.write_text("unsupported instruction", encoding="utf-8")
+            output.write_text("old source", encoding="utf-8")
+            with self.assertRaises(CodeInEnglishError):
+                generate_file(source)
+            self.assertEqual(output.read_text(encoding="utf-8"), "old source")
 
 
 if __name__ == "__main__":
