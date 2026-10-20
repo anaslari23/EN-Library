@@ -95,6 +95,8 @@ def _strategy(spec):
         return _function(spec.function_name, ["nums"], [ast.If(test=ast.UnaryOp(op=ast.Not(), operand=nums), body=[_return(_const(None))], orelse=[]), _return(_call(choose, nums))])
     if family == ProblemFamily.SUM:
         return _function("calculate_sum", ["nums"], [_return(_call("sum", nums))])
+    if family == ProblemFamily.SORT_ASCENDING:
+        return _function("sort_ascending", ["nums"], [_return(_call("sorted", nums))])
     if family == ProblemFamily.PALINDROME:
         text = _name("text")
         normalized = _call(_attr(text, "lower")) if "case_insensitive" in spec.constraints else text

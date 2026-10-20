@@ -23,6 +23,7 @@ class ProblemFamily(str, Enum):
     MERGE_SORTED_LISTS = "merge_sorted_lists"
     MAXIMUM_SUBARRAY_SUM = "maximum_subarray_sum"
     BALANCED_DELIMITERS = "balanced_delimiters"
+    SORT_ASCENDING = "sort_ascending"
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,7 @@ class ProblemSpec:
             ProblemFamily.MERGE_SORTED_LISTS: "merge_sorted_lists",
             ProblemFamily.MAXIMUM_SUBARRAY_SUM: "maximum_subarray_sum",
             ProblemFamily.BALANCED_DELIMITERS: "has_balanced_delimiters",
+            ProblemFamily.SORT_ASCENDING: "sort_ascending",
         }[self.family]
 
 
@@ -100,6 +102,8 @@ def _inputs(family: ProblemFamily) -> tuple[ProblemInput, ...]:
         return (ProblemInput("text", "string"),)
     if family == ProblemFamily.MOVE_ZEROS:
         return (ProblemInput("nums", "integer_list"),)
+    if family == ProblemFamily.SORT_ASCENDING:
+        return (ProblemInput("nums", "integer_list"),)
     if family == ProblemFamily.MERGE_SORTED_LISTS:
         return (ProblemInput("first", "sorted_integer_list"), ProblemInput("second", "sorted_integer_list"))
     if family == ProblemFamily.MAXIMUM_SUBARRAY_SUM:
@@ -126,6 +130,8 @@ def _assumptions(family: ProblemFamily) -> tuple[ProblemAssumption, ...]:
         return (ProblemAssumption("Reverse the sequence of Unicode code points without normalization.", "defaulted"),)
     if family == ProblemFamily.MOVE_ZEROS:
         return (ProblemAssumption("Preserve the relative order of nonzero values.", "defaulted"), ProblemAssumption("Return a new list; do not mutate the input.", "defaulted"))
+    if family == ProblemFamily.SORT_ASCENDING:
+        return (ProblemAssumption("Sort in ascending order and keep duplicate values.", "stated"), ProblemAssumption("Return a new list; do not mutate the input.", "defaulted"))
     if family == ProblemFamily.MERGE_SORTED_LISTS:
         return (ProblemAssumption("Both inputs are sorted in ascending order.", "stated"), ProblemAssumption("Keep duplicate values and return a new list.", "defaulted"))
     if family == ProblemFamily.MAXIMUM_SUBARRAY_SUM:
@@ -142,7 +148,7 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
         _error(prompt, filename, "the problem statement is empty")
 
     pair = (
-        _has(text, r"\btwo\s+(?:different\s+)?(numbers?|values?|elements?)\b", r"\bpair of\s+(?:different\s+)?(numbers?|values?|elements?)\b", r"\bpairs?\b")
+        _has(text, r"\btwo\s+(?:different\s+)?(numbers?|values?|elements?|entries)\b", r"\bpair of\s+(?:different\s+)?(numbers?|values?|elements?|entries)\b", r"\bpairs?\b")
         and _has(text, r"\b(add up|sum|total|equal)\b", r"\badds?\s+to\b")
         and _has(text, r"\b(indices|indexes|positions)\b")
         and _has(text, _TARGET)
@@ -170,7 +176,7 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
         result = "indices" if "one_solution_guaranteed" in constraints else "indices_or_none"
         return ProblemSpec(ProblemFamily.TWO_SUM, _inputs(ProblemFamily.TWO_SUM), result, frozenset(constraints), ("pair", "sum", "indices", "target"), tuple(assumptions), prompt.examples)
 
-    if _has(text, r"\b(?:first\s+)?(?:non repeating|non-repeating|unique)\s+character\b", r"\bfirst character\b.{0,30}\b(?:occurs once|appears once|not repeated)\b"):
+    if _has(text, r"\b(?:first\s+)?(?:non repeating|non-repeating|unique)\s+(?:character|letter)\b", r"\bfirst (?:character|letter)\b.{0,30}\b(?:occurs once|appears once|not repeated)\b"):
         if _has(text, r"\b(?:index|position|location)\b"):
             _error(prompt, filename, "I return the first unique character itself, not its index", "unsupported")
         constraints = {"case_insensitive"} if _has(text, r"\b(?:case insensitive|ignore case|ignoring case)\b") else set()
@@ -180,7 +186,7 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
         )
         return ProblemSpec(ProblemFamily.FIRST_UNIQUE_CHARACTER, _inputs(ProblemFamily.FIRST_UNIQUE_CHARACTER), "character_or_null", frozenset(constraints), ("first unique character",), assumptions, prompt.examples)
 
-    if _has(text, r"\brevers\w*\b") and _has(text, r"\b(?:text|string|word|phrase)\b"):
+    if _has(text, r"\brevers\w*\b", r"\bbackwards?\b") and _has(text, r"\b(?:text|string|word|phrase)\b") and not _has(text, r"\b(?:same|palindrome)\b"):
         if _has(text, r"\b(?:do not|don't|never)\s+revers\w*\b"):
             _error(prompt, filename, "the text reversal request is negated; describe the intended operation", "ambiguous")
         if _has(text, r"\b(?:sort|alphabetical|letters?)\b"):
@@ -196,9 +202,18 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
         return ProblemSpec(ProblemFamily.MOVE_ZEROS, _inputs(ProblemFamily.MOVE_ZEROS), "integer_list", frozenset(), ("move zeros to end",), assumptions, prompt.examples)
 
     if _has(text, r"\b(?:merge|combine)\b") and _has(text, r"\b(?:two|2|both)\b") and _has(text, r"\b(?:list|lists|arrays?)\b"):
-        if not _has(text, r"\bsorted\s+(?:integer\s+)?lists?\b", r"\bascending\s+arrays?\b", r"\bboth\s+lists?\s+(?:are|is)\s+sorted\b"):
+        if not _has(text, r"\b(?:two|both)\s+sorted\s+(?:integer\s+)?lists?\b", r"\bascending\s+arrays?\b", r"\bboth\s+lists?\s+(?:are|is)\s+sorted\b"):
             _error(prompt, filename, "Are both lists sorted in ascending order?", "ambiguous")
         return ProblemSpec(ProblemFamily.MERGE_SORTED_LISTS, _inputs(ProblemFamily.MERGE_SORTED_LISTS), "integer_list", frozenset({"sorted_inputs_ascending"}), ("merge two sorted lists",), _assumptions(ProblemFamily.MERGE_SORTED_LISTS), prompt.examples)
+
+    if _has(text, r"\b(?:sort|sorted|arrange|order)\b") and _has(text, _DATA) and not _has(text, _TARGET, r"\b(?:search|merge|combine)\b"):
+        if _has(text, r"\b(?:descending|decreasing|largest to smallest|reverse)\b", r"\b(?:do not|never)\s+sort\b"):
+            _error(prompt, filename, "I can sort numbers in ascending order; describe a different requested order separately", "unsupported")
+        if _has(text, r"^(?:is|are|check|determine whether)\b"):
+            _error(prompt, filename, "Do you want to check whether the numbers are sorted, or sort them?", "ambiguous")
+        if not _has(text, r"\b(?:ascending|increasing)\b", r"\bsmallest to largest\b", r"\blowest to highest\b"):
+            _error(prompt, filename, "Should the numbers be sorted from smallest to largest?", "ambiguous")
+        return ProblemSpec(ProblemFamily.SORT_ASCENDING, _inputs(ProblemFamily.SORT_ASCENDING), "sorted_integer_list", frozenset({"ascending", "new_list"}), ("sort", "ascending"), _assumptions(ProblemFamily.SORT_ASCENDING), prompt.examples)
 
     if _has(text, r"\b(?:maximum|largest|greatest)\b") and _has(text, r"\b(?:contiguous|subarray)\b") and _has(text, r"\b(?:sum|total)\b"):
         if _has(text, r"\b(?:do not|don't|never)\s+(?:find|return|calculate)\b"):
@@ -231,17 +246,17 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
         if _has(text, r"\b(?:maximum|largest|biggest)\b") and _has(text, r"\b(?:minimum|smallest|least)\b"):
             _error(prompt, filename, "I can find a minimum or maximum, but need you to ask for one result at a time", "ambiguous")
 
-    if _has(text, r"\b(?:how often|frequency|frequencies|number of occurrences|count of each|count for each|count for every|count how many times|how many times each)\b"):
+    if _has(text, r"\b(?:how often|frequency|frequencies|number of occurrences|count occurrences of each|count of each|count for each|count for every|count how many times|how many times each)\b"):
         if _has(text, r"\b(?:not|never)\s+(?:count|frequency|occur)\b"):
             _error(prompt, filename, "the frequency request is negated; please say what result you want", "ambiguous")
         return ProblemSpec(ProblemFamily.FREQUENCIES, _inputs(ProblemFamily.FREQUENCIES), "frequency_map", frozenset(), ("frequency", "occurrences"), _assumptions(ProblemFamily.FREQUENCIES), prompt.examples)
 
-    if _has(text, r"\b(?:duplicate|duplicates|repeated value|is repeated|are repeated|appears more than once|occurs more than once)\b"):
+    if _has(text, r"\b(?:duplicate|duplicates|repeated value|is repeated|are repeated|repeats?|appears more than once|occurs more than once)\b"):
         if _has(text, r"\b(?:not|never|no)\b.{0,24}\b(?:duplicate|repeated|more than once)\b"):
             _error(prompt, filename, "I recognized a duplicate check, but the request is negated; please clarify the desired result", "ambiguous")
         return ProblemSpec(ProblemFamily.DUPLICATES, _inputs(ProblemFamily.DUPLICATES), "contains_duplicate", frozenset(), ("duplicate", "repeated"), _assumptions(ProblemFamily.DUPLICATES), prompt.examples)
 
-    if _has(text, r"\bpalindrome\b", r"\breads? the same forward and backward\b", r"\bsame forwards? and backwards?\b"):
+    if _has(text, r"\bpalindrome\b", r"\breads? the same forward and backward\b", r"\bsame forwards? and backwards?\b", r"\bsame backwards? and forwards?\b"):
         if _has(text, r"\b(?:not|never|no)\b.{0,24}\bpalindrome\b", r"\b(?:do not|don't|never)\s+(?:check|test|determine)\b.{0,24}\bpalindrome\b"):
             _error(prompt, filename, "I recognized a palindrome check, but the request is negated; please clarify the desired result", "ambiguous")
         constraints = {"case_sensitive", "punctuation_significant", "whitespace_significant"}
@@ -311,7 +326,7 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
         return ProblemSpec(ProblemFamily.BINARY_SEARCH, _inputs(ProblemFamily.BINARY_SEARCH), "index_or_minus_one", frozenset({"sorted_input", "return_minus_one_if_missing"}), ("search", "sorted", "index"), assumptions, prompt.examples)
 
     aggregate = None
-    if _has(text, r"\b(?:maximum|largest|biggest)\b"):
+    if _has(text, r"\b(?:maximum|largest|biggest|greatest)\b"):
         aggregate = ProblemFamily.MAXIMUM
     elif _has(text, r"\b(?:minimum|smallest|least)\b"):
         aggregate = ProblemFamily.MINIMUM

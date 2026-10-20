@@ -9,6 +9,27 @@ class RecognizeProblemTests(unittest.TestCase):
     def recognize(self, text):
         return recognize_problem(ProblemPrompt(text, (1,)))
 
+    def test_sort_ascending_contract_and_ambiguous_requests(self):
+        prompts = (
+            "Sort the list of integers in ascending order.",
+            "Arrange these numbers from smallest to largest.",
+            "Return the numbers sorted in increasing order.",
+        )
+        for prompt in prompts:
+            with self.subTest(prompt=prompt):
+                spec = self.recognize(prompt)
+                self.assertEqual(spec.family, ProblemFamily.SORT_ASCENDING)
+                self.assertEqual(spec.function_name, "sort_ascending")
+                self.assertEqual(spec.result, "sorted_integer_list")
+        for prompt in (
+            "Sort the numbers.",
+            "Sort the numbers in descending order.",
+            "Sort and reverse the list of numbers.",
+            "Is the list of numbers sorted in ascending order?",
+        ):
+            with self.subTest(prompt=prompt), self.assertRaises(CodeInEnglishError):
+                self.recognize(prompt)
+
     def test_recognizes_two_sum_indices_from_two_phrasings(self):
         prompts = (
             "Given an array of integers nums and a target, return the indices of two numbers that add up to target. Exactly one solution exists and do not reuse an element.",

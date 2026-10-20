@@ -20,6 +20,13 @@ class ProblemStrategyTests(unittest.TestCase):
     def test_pair_sum(self):
         self.assertEqual(self.function("Find two numbers that add up to target and return their indices. Exactly one solution exists.", "two_sum", [2, 7, 11], 9), (0, 1))
 
+    def test_sort_ascending_preserves_duplicates_and_input(self):
+        nums = [3, 1, 3, -2]
+        result = self.function("Sort the list of integers in ascending order.", "sort_ascending", nums)
+        self.assertEqual(result, [-2, 1, 3, 3])
+        self.assertEqual(nums, [3, 1, 3, -2])
+        self.assertEqual(self.function("Sort the list of integers in ascending order.", "sort_ascending", []), [])
+
     def test_duplicates_and_frequency(self):
         self.assertTrue(self.function("Check whether a list contains a duplicate value.", "contains_duplicate", [1, 2, 1]))
         self.assertFalse(self.function("Check whether a list contains a duplicate value.", "contains_duplicate", []))

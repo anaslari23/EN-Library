@@ -1,0 +1,38 @@
+{
+  "accepted": [
+    ["Find two numbers in a list that total the target and give their positions.", "two_sum"],
+    ["Does this array contain a repeated value?", "duplicates"],
+    ["Give the count for every distinct value in the numbers.", "frequencies"],
+    ["Does this text read the same forward and backward?", "palindrome"],
+    ["Can one word be rearranged to make the other word?", "anagram"],
+    ["Find the target in a sorted list and return its position.", "binary_search"],
+    ["Find the least number in the array.", "minimum"],
+    ["Find the biggest number in the array.", "maximum"],
+    ["Return the total of all values in the list.", "sum"],
+    ["Give the first character that occurs once in the text.", "first_unique_character"],
+    ["Return the word in reverse.", "reverse_text"],
+    ["Shift the zero values to the back of the array.", "move_zeros"],
+    ["Combine two sorted integer lists into one sorted list.", "merge_sorted_lists"],
+    ["Find the largest total for a contiguous part of the list.", "maximum_subarray_sum"],
+    ["Are the brackets properly matched?", "balanced_delimiters"],
+    ["Arrange these integers from smallest to largest.", "sort_ascending"],
+    ["Locate two entries whose sum equals the target and report their indices.", "two_sum"],
+    ["Check if any number repeats in this list.", "duplicates"],
+    ["Count occurrences of each integer in the array.", "frequencies"],
+    ["Check whether this word is the same backward and forward.", "palindrome"],
+    ["Return the greatest value in this list.", "maximum"],
+    ["Find the first letter that appears once in the text.", "first_unique_character"],
+    ["Write this string backwards.", "reverse_text"],
+    ["Order the numbers from lowest to highest.", "sort_ascending"]
+  ],
+  "rejected": [
+    "Sort the numbers in descending order.",
+    "Sort these numbers.",
+    "Write a web browser.",
+    "Find two numbers adding to target and return every matching pair of indices.",
+    "Check if this text is a palindrome, case-sensitive and ignoring case.",
+    "Search for the target in an unsorted list and return its index.",
+    "Merge two lists into one sorted list.",
+    "Find the first non-repeating character and return its index."
+  ]
+}
