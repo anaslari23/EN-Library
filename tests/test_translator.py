@@ -4,6 +4,9 @@ import unittest
 from pathlib import Path
 
 from codeinenglish import CodeInEnglishError, generate_file, translate, translate_file
+from codeinenglish.interpreter import interpret_source
+from codeinenglish.ir import Program
+from codeinenglish.problem_recognizer import ProblemSpec
 
 
 class TranslateTests(unittest.TestCase):
@@ -94,6 +97,15 @@ end if"""
 
 
 class TranslateFileTests(unittest.TestCase):
+    def test_interpret_source_returns_typed_semantics(self):
+        program = interpret_source('target python\nshow "Hello"', "greeting.en")
+        self.assertIsInstance(program, Program)
+        prompt = "# Find two numbers that add up to the target and return their indices.\n"
+        canonical = interpret_source("target python\n" + prompt, "pair.en")
+        legacy = interpret_source("import codeinpython library\n" + prompt, "pair.en")
+        self.assertIsInstance(canonical, ProblemSpec)
+        self.assertEqual(canonical, legacy)
+
     def test_default_and_explicit_output_paths(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "program.en"

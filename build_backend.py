@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 NAME = "codeinenglish"
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 DIST_INFO = f"{NAME}-{VERSION}.dist-info"
 ROOT = Path(__file__).parent
 

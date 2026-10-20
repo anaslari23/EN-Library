@@ -1,9 +1,13 @@
 from pathlib import Path
 
 from .errors import CodeInEnglishError
+from .ir import Program
+from .parser import parse_program
 from .problem_prompt import LIBRARY_DIRECTIVE
-from .translator import _write_python, translate
-from .problem_solver import solve
+from .problem_recognizer import ProblemSpec
+from .problem_solver import recognize_source, render_problem_python
+from .python_generator import generate_python
+from .translator import _write_python
 
 
 def generate_file(source_path: str | Path, output_path: str | Path | None = None) -> Path:
@@ -14,11 +18,21 @@ def generate_file(source_path: str | Path, output_path: str | Path | None = None
         raise CodeInEnglishError(str(source), 1, "input and output paths must be different")
 
     english_source = source.read_text(encoding="utf-8")
-    prepared, mode = _prepare_source(english_source, str(source))
-    python_source = solve(prepared, str(source)) if mode == "problem" else translate(prepared, str(source))
+    interpreted = interpret_source(english_source, str(source))
+    python_source = (
+        render_problem_python(interpreted)
+        if isinstance(interpreted, ProblemSpec)
+        else generate_python(interpreted)
+    )
 
     _write_python(python_source, destination)
     return destination
+
+
+def interpret_source(source: str, filename: str = "<string>") -> Program | ProblemSpec:
+    """Interpret an EN file without generating target-language source."""
+    prepared, mode = _prepare_source(source, filename)
+    return recognize_source(prepared, filename) if mode == "problem" else parse_program(prepared, filename)
 
 
 def _prepare_source(source: str, filename: str) -> tuple[str, str]:

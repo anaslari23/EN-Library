@@ -3,7 +3,7 @@ from dataclasses import replace
 
 from .errors import CodeInEnglishError
 from .problem_prompt import extract_problem_prompt
-from .problem_recognizer import recognize_problem
+from .problem_recognizer import ProblemSpec, recognize_problem
 from .problem_strategies import generate_problem_ast
 from .python_generator import generate_python_ast
 from .translator import _write_python
@@ -11,9 +11,19 @@ from .translator import _write_python
 
 def solve(source: str, filename: str = "<string>") -> str:
     """Generate editable Python for a supported comment-written problem."""
+    return render_problem_python(recognize_source(source, filename))
+
+
+def recognize_source(source: str, filename: str = "<string>") -> ProblemSpec:
+    """Return the validated, target-neutral meaning of a problem request."""
     prompt = extract_problem_prompt(source, filename)
     spec = replace(recognize_problem(prompt, filename), examples=prompt.examples)
     _validate_examples(spec, filename)
+    return spec
+
+
+def render_problem_python(spec: ProblemSpec) -> str:
+    """Render a validated problem specification as Python source."""
     comments = [
         f"Interpreted request: {spec.function_name}({', '.join(item.name for item in spec.inputs)}) -> {spec.result}.",
         *[f"{assumption.status.title()} assumption: {assumption.text}" for assumption in spec.assumptions],
