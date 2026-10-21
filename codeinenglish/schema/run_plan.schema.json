@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeinenglish.dev/schema/run-plan-v1.json",
+  "title": "Code in English run-plan response",
+  "type": "object",
+  "required": ["schema_version", "file", "version", "supported_versions", "target", "form", "examples", "plan", "written", "diagnostics"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "file": {"type": "string"},
+    "version": {"type": ["string", "null"]},
+    "supported_versions": {"type": "array", "items": {"type": "string"}},
+    "target": {"enum": ["python", "javascript"]},
+    "form": {"enum": ["instructions", "problem", null]},
+    "examples": {
+      "type": "object",
+      "required": ["present", "count"],
+      "properties": {"present": {"type": "boolean"}, "count": {"type": "integer", "minimum": 0}},
+      "additionalProperties": false
+    },
+    "plan": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "required": ["output_path", "runtime", "run_examples", "run_args"],
+          "properties": {
+            "output_path": {"type": "string"},
+            "runtime": {"enum": ["python", "node"]},
+            "run_examples": {"type": "boolean"},
+            "run_args": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "written": {"type": "boolean"},
+    "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "required": ["code", "severity", "message", "file", "line", "column", "end_line", "end_column", "hint", "related"],
+      "properties": {
+        "code": {"type": "string"},
+        "severity": {"enum": ["error", "warning"]},
+        "message": {"type": "string"},
+        "file": {"type": "string"},
+        "line": {"type": "integer", "minimum": 1},
+        "column": {"type": "integer", "minimum": 1},
+        "end_line": {"type": "integer", "minimum": 1},
+        "end_column": {"type": "integer", "minimum": 1},
+        "hint": {"type": ["string", "null"]},
+        "related": {"type": "array", "items": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "integer"}], "minItems": 2, "maxItems": 2}}
+      },
+      "additionalProperties": false
+    }
+  }
+}

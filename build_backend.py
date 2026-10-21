@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 NAME = "codeinenglish"
-VERSION = "0.1.5"
+VERSION = "0.2.0"
 DIST_INFO = f"{NAME}-{VERSION}.dist-info"
 ROOT = Path(__file__).parent
 
@@ -55,6 +55,10 @@ def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
         path.relative_to(ROOT).as_posix(): path.read_bytes()
         for path in sorted((ROOT / NAME).glob("*.py"))
     }
+    files.update({
+        path.relative_to(ROOT).as_posix(): path.read_bytes()
+        for path in sorted((ROOT / NAME / "schema").glob("*.json"))
+    })
     if metadata_directory:
         metadata_path = Path(metadata_directory)
         dist_files = {path.name: path.read_bytes() for path in metadata_path.iterdir()}

@@ -2,21 +2,42 @@ from pathlib import Path
 from dataclasses import replace
 
 from .errors import CodeInEnglishError
-from .problem_prompt import extract_problem_prompt
+from .contract import ENSourceError, read_contract
+from .problem_prompt import extract_problem_prompt, extract_problem_prompt_lines
 from .problem_recognizer import ProblemSpec, recognize_problem
 from .problem_strategies import generate_problem_ast
 from .python_generator import generate_python_ast
 from .translator import _write_python
+from .provenance import add_provenance
 
 
 def solve(source: str, filename: str = "<string>") -> str:
     """Generate editable Python for a supported comment-written problem."""
+    contract = read_contract(source, filename)
+    if not contract.ok:
+        raise ENSourceError(tuple(item for item in contract.diagnostics if item.severity == "error"))
+    if contract.version == (0, 2):
+        if contract.target != "python":
+            raise CodeInEnglishError(filename, 1, "solve() generates Python; use generate_file() for a different target")
+        if contract.form != "problem":
+            raise CodeInEnglishError(filename, 1, "solve() expects one #? problem request")
+        return render_problem_python(recognize_lines(contract.lines, filename))
     return render_problem_python(recognize_source(source, filename))
 
 
 def recognize_source(source: str, filename: str = "<string>") -> ProblemSpec:
     """Return the validated, target-neutral meaning of a problem request."""
     prompt = extract_problem_prompt(source, filename)
+    spec = replace(recognize_problem(prompt, filename), examples=prompt.examples)
+    _validate_examples(spec, filename)
+    return spec
+
+
+def recognize_lines(lines, filename: str = "<string>") -> ProblemSpec:
+    """Recognize request text already separated by the source contract."""
+    pairs = [(line.text, line.line) for line in lines]
+    first_line = lines[0].line if lines else 1
+    prompt = extract_problem_prompt_lines(pairs, filename, first_line)
     spec = replace(recognize_problem(prompt, filename), examples=prompt.examples)
     _validate_examples(spec, filename)
     return spec
@@ -60,6 +81,10 @@ def solve_file(source_path: str | Path, output_path: str | Path | None = None) -
     if source.resolve() == destination.resolve():
         from .errors import CodeInEnglishError
         raise CodeInEnglishError(str(source), 1, "input and output paths must be different")
-    generated = solve(source.read_text(encoding="utf-8"), str(source))
+    source_text = source.read_text(encoding="utf-8")
+    generated = solve(source_text, str(source))
+    contract = read_contract(source_text, str(source))
+    version_label = f"{contract.version[0]}.{contract.version[1]}" if contract.version else None
+    generated = add_provenance(generated, source, version_label, "python")
     _write_python(generated, destination)
     return destination

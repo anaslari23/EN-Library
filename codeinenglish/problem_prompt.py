@@ -55,6 +55,13 @@ def extract_problem_prompt(source: str, filename: str = "<string>") -> ProblemPr
             kind="unsupported",
         )
 
+    return extract_problem_prompt_lines(lines, filename, empty_prompt_line)
+
+
+def extract_problem_prompt_lines(lines: list[tuple[str, int]] | tuple[tuple[str, int], ...],
+                                 filename: str = "<string>", empty_prompt_line: int = 1) -> ProblemPrompt:
+    """Parse already-extracted request lines while retaining original line numbers."""
+    lines = list(lines)
     examples: list[ProblemExample] = []
     natural_lines: list[tuple[str, int]] = []
     index = 0
