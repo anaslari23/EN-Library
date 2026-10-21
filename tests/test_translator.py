@@ -176,7 +176,7 @@ class TranslateFileTests(unittest.TestCase):
             self.assertIn("def two_sum(nums, target):", output.read_text(encoding="utf-8"))
 
     def test_generate_file_rejects_invalid_target_without_overwriting(self):
-        for text, line in (("target javascript\nshow 1", 1),
+        for text, line in (("target ruby\nshow 1", 1),
                            ("target python\ntarget javascript\nshow 1", 2),
                            ("target python\ntarget python\nshow 1", 2)):
             with self.subTest(text=text), tempfile.TemporaryDirectory() as directory:

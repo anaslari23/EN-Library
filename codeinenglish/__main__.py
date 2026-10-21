@@ -16,9 +16,9 @@ def _argument_parser() -> argparse.ArgumentParser:
     solve = commands.add_parser("solve", help="generate Python from an .en problem statement")
     solve.add_argument("source", help="comment-based problem source file")
     solve.add_argument("--output", help="Python output path (defaults to the same name with .py)")
-    generate = commands.add_parser("generate", help="generate Python from any supported .en file")
+    generate = commands.add_parser("generate", help="generate target-language source from a supported .en file")
     generate.add_argument("source", help="Code in English source file")
-    generate.add_argument("--output", help="Python output path (defaults to the same name with .py)")
+    generate.add_argument("--output", help="output path (defaults to .py or .js based on target)")
     return parser
 
 

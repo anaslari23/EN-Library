@@ -26,7 +26,7 @@ class InstalledPackageTests(unittest.TestCase):
             environment = os.environ.copy()
             environment["PYTHONPATH"] = str(target)
             imported = subprocess.run(
-                [sys.executable, "-c", "import codeinenglish; from importlib.metadata import version; assert version('codeinenglish') == '0.1.4'; assert callable(codeinenglish.solve_file); assert callable(codeinenglish.generate_file)"],
+                [sys.executable, "-c", "import codeinenglish; from importlib.metadata import version; assert version('codeinenglish') == '0.1.5'; assert callable(codeinenglish.solve_file); assert callable(codeinenglish.generate_file)"],
                 cwd=outside,
                 env=environment,
                 text=True,

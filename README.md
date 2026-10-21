@@ -42,6 +42,8 @@ target python
 
 The offline recognizer currently covers common array/string families including two-sum indices, duplicates, frequencies, palindrome/anagram checks, binary search, extrema/sum, first unique character, reverse text, moving zeros, merging sorted lists, maximum subarray sum, balanced delimiters, and ascending numeric sort. Supported wording and assumptions are documented in the language repository. This is deterministic rule-based recognition, not unrestricted English understanding; unsupported or ambiguous prompts produce diagnostics rather than guessed code.
 
+`target javascript` is an early second backend. It supports literal/name assignments and `show` in instruction files, and ascending numeric sort comment problems. `generate` writes `.js`; run that output with Node.js. Other JavaScript constructs and problem families fail explicitly. The Python backend retains its wider coverage.
+
 Internally, English instructions become a typed `Program`; comment requests become a typed `ProblemSpec`. Python AST is created only after recognition, in the Python renderer. This boundary lets a later language backend reuse the English interpretation.
 
 ## Development
