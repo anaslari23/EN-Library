@@ -49,6 +49,82 @@ RECIPES = (
            (r"\bsecond (?:largest|biggest|highest|greatest)\b",),
            ("Duplicates count once; return null when fewer than two distinct values exist.",),
            "def second_largest(nums):\n    distinct = sorted(set(nums))\n    return distinct[-2] if len(distinct) >= 2 else None\n"),
+
+    # --- math ---
+    Recipe("is_even", "is_even", _NUM, "boolean", (r"\b(?:even|odd)\b", r"\b(?:check|whether|determine|is|test)\b"),
+           ("Zero is even; negative numbers follow the same rule.",),
+           "def is_even(n):\n    return n % 2 == 0\n",
+           rejects=(r"\b(?:list|array|numbers|filter|sum|count|sort|divisible)\b",)),
+    Recipe("power_of_two", "is_power_of_two", _NUM, "boolean", (r"\bpower of (?:two|2)\b",),
+           ("1 is a power of two; zero and negative numbers are not.",),
+           "def is_power_of_two(n):\n    if n < 1:\n        return False\n    while n % 2 == 0:\n        n = n // 2\n    return n == 1\n"),
+    Recipe("sum_of_digits", "sum_of_digits", _NUM, "integer", (r"\bdigits?\b", r"\b(?:sum|total|add)\b"),
+           ("Use the absolute value; the sum of the digits of 0 is 0.",),
+           "def sum_of_digits(n):\n    n = abs(n)\n    total = 0\n    while n > 0:\n        total += n % 10\n        n = n // 10\n    return total\n",
+           rejects=(r"\b(?:list|array)\b",)),
+    Recipe("perfect_square", "is_perfect_square", _NUM, "boolean", (r"\bperfect squares?\b",),
+           ("Negative numbers are not perfect squares.",),
+           "def is_perfect_square(n):\n    if n < 0:\n        return False\n    root = 0\n    while root * root < n:\n        root += 1\n    return root * root == n\n"),
+    Recipe("leap_year", "is_leap_year", (("year", "integer"),), "boolean", (r"\bleap years?\b",),
+           ("Gregorian rule: divisible by 4, except centuries not divisible by 400.",),
+           "def is_leap_year(year):\n    return (year % 4 == 0 and year % 100 != 0) or year % 400 == 0\n"),
+    Recipe("fizzbuzz", "fizzbuzz", _NUM, "string_list", (r"\bfizz ?buzz\b",),
+           ("Count from 1 to n; multiples of 3 give Fizz, of 5 Buzz, of both FizzBuzz; other numbers appear as text.",),
+           "def fizzbuzz(n):\n    result = []\n    for number in range(1, n + 1):\n        if number % 15 == 0:\n            result.append('FizzBuzz')\n        elif number % 3 == 0:\n            result.append('Fizz')\n        elif number % 5 == 0:\n            result.append('Buzz')\n        else:\n            result.append(str(number))\n    return result\n"),
+    # --- text ---
+    Recipe("count_words", "count_words", _TEXT, "integer", (r"\bwords\b", r"\b(?:count|how many|number of)\b"),
+           ("Words are separated by any whitespace.",),
+           "def count_words(text):\n    return len(text.split())\n",
+           rejects=(r"\b(?:vowels?|longest|shortest)\b",)),
+    Recipe("longest_word", "longest_word", _TEXT, "string", (r"\blongest\b", r"\bwords?\b"),
+           ("Words are separated by whitespace; the first of equally long words wins; empty text gives an empty string.",),
+           "def longest_word(text):\n    best = ''\n    for word in text.split():\n        if len(word) > len(best):\n            best = word\n    return best\n"),
+    Recipe("remove_spaces", "remove_spaces", _TEXT, "string",
+           (r"\b(?:remove|delete|strip|eliminate)\b", r"\b(?:spaces?|whitespace)\b", r"\b(?:text|string|sentence|word)\b"),
+           ("All whitespace is removed, not just spaces.",),
+           "def remove_spaces(text):\n    return ''.join(text.split())\n"),
+    Recipe("remove_vowels", "remove_vowels", _TEXT, "string", (r"\b(?:remove|delete|strip|eliminate|drop)\b", r"\bvowels?\b"),
+           ("Vowels are a, e, i, o, u in either case.",),
+           "def remove_vowels(text):\n    return ''.join(character for character in text if character.lower() not in 'aeiou')\n"),
+    Recipe("count_character", "count_character", (("text", "string"), ("character", "string")), "integer",
+           (r"\b(?:count|how many times|number of times|occurrences?)\b", r"\b(?:character|letter|char)\b"),
+           ("The comparison is case-sensitive.",),
+           "def count_character(text, character):\n    total = 0\n    for item in text:\n        if item == character:\n            total += 1\n    return total\n",
+           rejects=(r"\b(?:each|every|all|vowels?|unique|first)\b",)),
+    # --- lists ---
+    Recipe("average", "calculate_average", _NUMS, "number_or_null", (r"\b(?:average|mean)\b", r"\b(?:list|array|numbers?|values?)\b"),
+           ("Return null for an empty list.",),
+           "def calculate_average(nums):\n    if not nums:\n        return None\n    return sum(nums) / len(nums)\n",
+           rejects=(r"\b(?:median|mode|weighted|moving|running)\b",)),
+    Recipe("filter_even", "filter_even_numbers", _NUMS, "integer_list",
+           (r"\beven\b", r"\b(?:filter|keep|select|only|extract|all)\b", r"\b(?:list|array|numbers)\b"),
+           ("Keep the original order.",),
+           "def filter_even_numbers(nums):\n    return [number for number in nums if number % 2 == 0]\n", rejects=(r"\bodd\b",)),
+    Recipe("filter_odd", "filter_odd_numbers", _NUMS, "integer_list",
+           (r"\bodd\b", r"\b(?:filter|keep|select|only|extract|all)\b", r"\b(?:list|array|numbers)\b"),
+           ("Keep the original order.",),
+           "def filter_odd_numbers(nums):\n    return [number for number in nums if number % 2 == 1]\n", rejects=(r"\beven\b",)),
+    Recipe("product", "product_of_list", _NUMS, "integer", (r"\b(?:product|multiply)\b", r"\b(?:list|array|numbers)\b"),
+           ("The product of an empty list is 1.",),
+           "def product_of_list(nums):\n    result = 1\n    for number in nums:\n        result *= number\n    return result\n",
+           rejects=(r"\b(?:dot|cross|matrix)\b",)),
+    Recipe("contains_value", "contains_value", (("nums", "integer_list"), ("target", "integer")), "boolean",
+           (r"\b(?:contains?|includes?|is present|is in)\b", r"\btarget\b"),
+           ("Return true when the target appears at least once.",),
+           "def contains_value(nums, target):\n    return target in nums\n",
+           rejects=(r"\b(?:duplicates?|index|position|sorted|sum|pair|count|times)\b",)),
+    Recipe("count_occurrences", "count_occurrences", (("nums", "integer_list"), ("target", "integer")), "integer",
+           (r"\b(?:count|how many times|number of times|occurrences?)\b", r"\b(?:appears?|occurs?|occurrences?)\b", r"\btarget\b"),
+           ("Count every position where the value equals the target.",),
+           "def count_occurrences(nums, target):\n    total = 0\n    for number in nums:\n        if number == target:\n            total += 1\n    return total\n",
+           rejects=(r"\b(?:each|every|all|character|letter|word)\b",)),
+    Recipe("reverse_list", "reverse_list", _NUMS, "integer_list", (r"\brevers\w*\b", r"\b(?:list|array)\b"),
+           ("Return a new list; do not mutate the input.",),
+           "def reverse_list(nums):\n    return list(reversed(nums))\n",
+           rejects=(r"\b(?:text|string|word|phrase|characters?|sort\w*)\b",)),
+    Recipe("running_total", "running_total", _NUMS, "integer_list", (r"\b(?:running|cumulative|prefix)\b", r"\b(?:sum|total)\b"),
+           ("Each entry is the sum of all values up to and including that position.",),
+           "def running_total(nums):\n    total = 0\n    result = []\n    for number in nums:\n        total += number\n        result.append(total)\n    return result\n"),
 )
 
 def _code(key, function, source):
@@ -84,18 +160,16 @@ def function_ast(recipe: Recipe) -> ast.FunctionDef:
     return ast.parse(recipe.source).body[0]
 
 
-def _vocabulary(recipe: Recipe) -> set[str]:
-    words = set(recipe.key.split("_"))
-    return words | set(re.findall(r"[a-z]{4,}", recipe.patterns[0]))  # the first pattern names the task
-
-
 def suggest(text: str, limit: int = 2) -> list[str]:
-    """Names of the recipes whose vocabulary best overlaps the (normalized) request, tolerating typos."""
-    tokens = set(text.split())
+    """Names of the recipes whose name and key words best overlap the (normalized) request, tolerating typos."""
+    tokens = {word for word in text.split() if len(word) > 3}
     scored = []
     for recipe in RECIPES:
-        vocabulary = _vocabulary(recipe)
-        score = sum(bool(difflib.get_close_matches(word, vocabulary, n=1, cutoff=0.8)) for word in tokens if len(word) > 3)
+        name_words = set(recipe.key.split("_"))
+        other_words = set(re.findall(r"[a-z]{4,}", recipe.patterns[0])) - name_words  # the first pattern names the task
+        score = sum(3 * bool(difflib.get_close_matches(word, name_words, n=1, cutoff=0.8))
+                    + bool(difflib.get_close_matches(word, other_words, n=1, cutoff=0.8)) for word in tokens)
         if score:
             scored.append((-score, recipe.key))
-    return [key.replace("_", " ") for _, key in sorted(scored)[:limit]]
+    scored.sort()
+    return [key.replace("_", " ") for score, key in scored[:limit] if -score * 2 >= -scored[0][0]]

@@ -88,12 +88,16 @@ def _expr(node):
         arguments = [_expr(argument) for argument in node.args]
         if isinstance(node.func, ast.Attribute) and node.func.attr == "join" and isinstance(node.func.value, ast.Constant):
             return f"{arguments[0]}.join({_expr(node.func.value)})"
+        if isinstance(node.func, ast.Attribute) and node.func.attr == "split" and not arguments:
+            return f'{_expr(node.func.value)}.split(/\\s+/).filter((word) => word !== "")'
         if isinstance(node.func, ast.Attribute):
             method = _METHODS.get(node.func.attr)
             if method is None:
                 _fail(node, f"method .{node.func.attr}()")
             return f"{_expr(node.func.value)}.{method}({', '.join(arguments)})"
         name = getattr(node.func, "id", "")
+        if name == "str" and len(arguments) == 1:
+            return f"String({arguments[0]})"
         function = {"len": "enLen", "abs": "Math.abs", "sum": "enSum", "sorted": "enSorted", "reversed": "enReversed",
                     "max": "Math.max" if len(arguments) > 1 else "enMax",
                     "min": "Math.min" if len(arguments) > 1 else "enMin"}.get(name)
@@ -191,7 +195,7 @@ def recipe_javascript(spec, filename: str) -> str:
         "function run(input) {", checks,
         f"  const result = {call};",
         "  // ponytail: exact-integer results only; BigInt if larger factorials/Fibonacci are needed",
-        "  if (typeof result === 'number' && !Number.isSafeInteger(result)) throw new Error('result exceeds the exact integer range');",
+        "  if (Number.isInteger(result) && !Number.isSafeInteger(result)) throw new Error('result exceeds the exact integer range');",
         "  return result;", "}",
         f"const examples = {examples};",
         "if (process.argv.includes('--check-examples')) {",
