@@ -151,7 +151,7 @@ def _assumptions(family: ProblemFamily) -> tuple[ProblemAssumption, ...]:
 
 
 _THEN = re.compile(r"\b(?:and then|then|after that|afterwards|followed by)\b")
-_AS_INPUT = {"integer_list": "integer_list", "sorted_integer_list": "integer_list", "integer": "integer",
+_AS_INPUT = {"integer_list": "integer_list", "sorted_integer_list": "integer_list", "integer": "integer", "number": "number",
              "reversed_text": "string", "string": "string"}  # result name -> input kind it can feed
 _NOUN = {"integer_list": "list", "string": "text"}  # stands in for "it" when a later clause is recognized alone
 

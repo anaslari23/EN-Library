@@ -55,6 +55,8 @@ def render_problem_python(spec: ProblemSpec) -> str:
 def _matches_kind(value: object, kind: str) -> bool:
     if kind == "integer":
         return type(value) is int
+    if kind == "number":
+        return type(value) in (int, float)
     if kind == "string":
         return type(value) is str
     if kind in ("integer_list", "sorted_integer_list"):

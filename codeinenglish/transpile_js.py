@@ -22,6 +22,7 @@ _TESTS = {"isupper": r"/^\p{Lu}+$/u", "islower": r"/^\p{Ll}+$/u", "isdigit": r"/
 _METHODS = {"lower": "toLowerCase", "upper": "toUpperCase", "append": "push", "add": "add"}
 _CHECKS = {
     "integer": "Number.isSafeInteger({0})",
+    "number": "typeof {0} === 'number' && Number.isFinite({0})",
     "string": "typeof {0} === 'string'",
     "integer_list": "Array.isArray({0}) && {0}.every(Number.isSafeInteger)",
     "sorted_integer_list": "Array.isArray({0}) && {0}.every(Number.isSafeInteger) && {0}.every((v, i) => i === 0 || {0}[i - 1] <= v)",

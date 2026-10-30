@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-TOOL_VERSION = "0.2.0"
+TOOL_VERSION = "0.3.0"
 
 
 def add_provenance(source: str, source_path: str | Path, en_version: str | None, target: str) -> str:

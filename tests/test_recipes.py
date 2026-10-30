@@ -73,6 +73,12 @@ CASES = {
     "sum_of_odds": ("Calculate the sum of the odd numbers in a list.", {"nums": [1, 2, 4, 5]}, 6),
     "second_smallest": ("Find the second smallest number in a list.", {"nums": [4, 1, 1, 3]}, 3),
     "square_numbers": ("Square each number in a list.", {"nums": [1, 2, 3]}, [1, 4, 9]),
+    "celsius_to_fahrenheit": ("Convert celsius to fahrenheit.", {"celsius": 100}, 212.0),
+    "fahrenheit_to_celsius": ("Convert a temperature from fahrenheit to celsius.", {"fahrenheit": 212}, 100.0),
+    "km_to_miles": ("Convert kilometers to miles.", {"kilometers": 10}, 10 * 0.621371),
+    "miles_to_km": ("Convert miles to kilometers.", {"miles": 10}, 10 * 1.609344),
+    "kg_to_pounds": ("Convert kilograms to pounds.", {"kilograms": 2}, 2 * 2.2046226218),
+    "pounds_to_kg": ("Convert pounds to kilograms.", {"pounds": 2}, 2 * 0.45359237),
     "running_total": ("Calculate the running total of a list of numbers.", {"nums": [1, 2, 3]}, [1, 3, 6]),
 }
 

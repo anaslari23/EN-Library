@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — 2026-10-31
+
+- Added `codeinenglish run` and `import codeinenglish` generation from `# write a program to ...` comments.
+- Added unit-conversion recipes taking decimal input, table-driven recipes (57 tasks, plus the ten migrated original families), a Python-to-JavaScript transpiler for them, "X then Y" pipelines, and closest-task suggestions.
+- Added an opt-in local miss log (`CODEINENGLISH_MISSES`) and the `misses` command.
+
 ## 0.2.0 — 2026-10-21
 
 - Added versioned `.en` source contracts for legacy, `en 0.1`, and `en 0.2` files.

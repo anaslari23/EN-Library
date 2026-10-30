@@ -6,7 +6,7 @@ from .contract import Diagnostic, ENSourceError, SourceContract, SourceLine, rea
 
 from .autogen import generate_from_comments, _on_import
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "CodeInEnglishError", "Diagnostic", "ENSourceError", "SourceContract", "SourceLine",

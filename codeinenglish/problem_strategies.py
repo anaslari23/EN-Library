@@ -215,6 +215,8 @@ def generate_problem_ast(spec: ProblemSpec) -> ast.Module:
             ])
         elif item.kind == "integer":
             valid = ast.Compare(left=_call("type", value), ops=[ast.Is()], comparators=[_name("int")])
+        elif item.kind == "number":
+            valid = ast.Compare(left=_call("type", value), ops=[ast.In()], comparators=[ast.Tuple(elts=[_name("int"), _name("float")], ctx=ast.Load())])
         elif item.kind == "string":
             valid = ast.Compare(left=_call("type", value), ops=[ast.Is()], comparators=[_name("str")])
         else:
