@@ -62,7 +62,7 @@ class JavaScriptBackendTests(unittest.TestCase):
     def test_unsupported_javascript_problem_preserves_existing_output(self):
         with tempfile.TemporaryDirectory() as directory:
             en = Path(directory) / "program.en"
-            en.write_text('target javascript\n# Find the largest number in the list.\n', encoding="utf-8")
+            en.write_text('target javascript\n# Count how often each value appears in the list.\n', encoding="utf-8")
             output = en.with_suffix(".js")
             output.write_text("old source", encoding="utf-8")
             with self.assertRaises(CodeInEnglishError) as caught:

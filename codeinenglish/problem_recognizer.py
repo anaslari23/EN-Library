@@ -5,6 +5,7 @@ from typing import Literal
 
 from .errors import CodeInEnglishError
 from .problem_prompt import ProblemExample, ProblemPrompt
+from .recipes import BY_KEY, RECIPES, RecipeFamily, suggest
 
 
 class ProblemFamily(str, Enum):
@@ -24,6 +25,7 @@ class ProblemFamily(str, Enum):
     MAXIMUM_SUBARRAY_SUM = "maximum_subarray_sum"
     BALANCED_DELIMITERS = "balanced_delimiters"
     SORT_ASCENDING = "sort_ascending"
+    PIPELINE = "pipeline"
 
 
 @dataclass(frozen=True)
@@ -40,16 +42,21 @@ class ProblemAssumption:
 
 @dataclass(frozen=True)
 class ProblemSpec:
-    family: ProblemFamily
+    family: ProblemFamily | RecipeFamily
     inputs: tuple[ProblemInput, ...]
     result: str
     constraints: frozenset[str]
     evidence: tuple[str, ...]
     assumptions: tuple[ProblemAssumption, ...] = ()
     examples: tuple[ProblemExample, ...] = ()
+    stages: tuple["ProblemSpec", ...] = ()
 
     @property
     def function_name(self) -> str:
+        if self.stages:
+            return "_then_".join(stage.function_name for stage in self.stages)
+        if self.family.value in BY_KEY:
+            return BY_KEY[self.family.value].function
         return {
             ProblemFamily.TWO_SUM: "two_sum",
             ProblemFamily.DUPLICATES: "contains_duplicate",
@@ -141,11 +148,53 @@ def _assumptions(family: ProblemFamily) -> tuple[ProblemAssumption, ...]:
     return ()
 
 
+_THEN = re.compile(r"\b(?:and then|then|after that|afterwards|followed by)\b")
+_AS_INPUT = {"integer_list": "integer_list", "sorted_integer_list": "integer_list", "integer": "integer",
+             "reversed_text": "string", "string": "string"}  # result name -> input kind it can feed
+_NOUN = {"integer_list": "list", "string": "text"}  # stands in for "it" when a later clause is recognized alone
+
+
+def _pipeline(prompt: ProblemPrompt, text: str, filename: str) -> tuple[ProblemSpec, ...]:
+    """Recognize "do X, then Y" as stages whose output feeds the next stage's input; () if not a pipeline."""
+    clauses = [clause.strip() for clause in _THEN.split(text) if clause.strip()]
+    if len(clauses) < 2:
+        return ()
+    stages: list[ProblemSpec] = []
+    for clause in clauses:
+        if stages:
+            clause += " " + _NOUN.get(_AS_INPUT.get(stages[-1].result, ""), "")
+        try:
+            stage = recognize_problem(ProblemPrompt(clause, prompt.source_lines), filename)
+        except CodeInEnglishError:
+            if not stages:
+                return ()  # not a chain of supported tasks; let the normal rules report on the whole request
+            _error(prompt, filename, f"I understood '{stages[-1].function_name}' but not the step after it: '{clause.strip()}'", "ambiguous")
+        if len(stage.inputs) != 1:
+            return ()
+        if stages:
+            feeds, wants = _AS_INPUT.get(stages[-1].result), stage.inputs[0].kind
+            if feeds is None or (wants == "sorted_integer_list" and stages[-1].result != wants) or (wants != "sorted_integer_list" and feeds != wants):
+                _error(prompt, filename, f"I can't feed the result of '{stages[-1].function_name}' into '{stage.function_name}'", "ambiguous")
+        stages.append(stage)
+    return tuple(stages)
+
+
 def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> ProblemSpec:
     """Recognize a supported DSA intent from explicit deterministic phrase rules."""
     text = _normalize(prompt.text)
     if not text:
         _error(prompt, filename, "the problem statement is empty")
+
+    stages = _pipeline(prompt, text, filename)
+    if stages:
+        assumptions = tuple(item for stage in stages for item in stage.assumptions)
+        return ProblemSpec(ProblemFamily.PIPELINE, stages[0].inputs, stages[-1].result, frozenset(), ("then",), assumptions, prompt.examples, stages)
+
+    for recipe in RECIPES:
+        if all(_has(text, pattern) for pattern in recipe.patterns) and not _has(text, *recipe.rejects):
+            inputs = tuple(ProblemInput(name, kind) for name, kind in recipe.inputs)
+            assumptions = tuple(ProblemAssumption(note, "defaulted") for note in recipe.assumptions)
+            return ProblemSpec(RecipeFamily(recipe.key), inputs, recipe.result, frozenset(), (recipe.key,), assumptions, prompt.examples)
 
     pair = (
         _has(text, r"\btwo\s+(?:different\s+)?(numbers?|values?|elements?|entries)\b", r"\bpair of\s+(?:different\s+)?(numbers?|values?|elements?|entries)\b", r"\bpairs?\b")
@@ -340,6 +389,8 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
 
     if search and _has(text, _TARGET) and not sorted_input:
         _error(prompt, filename, "Is the list sorted, and should I return the value or its position?", "ambiguous")
+    close = suggest(text)
+    hint = f" Closest supported tasks: {', '.join(close)}." if close else ""
     if not _has(text, _DATA):
-        _error(prompt, filename, "I couldn't identify the input data. Describe the list, text, or values the problem uses.", "ambiguous")
-    _error(prompt, filename, "I don't recognize this problem type yet. Try describing its input and the result you want.")
+        _error(prompt, filename, "I couldn't identify the input data. Describe the list, text, or values the problem uses." + hint, "ambiguous")
+    _error(prompt, filename, "I don't recognize this problem type yet. Try describing its input and the result you want." + hint)

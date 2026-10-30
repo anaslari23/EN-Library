@@ -4,7 +4,9 @@ import json
 
 from .errors import CodeInEnglishError
 from .ir import Assign, Display, Literal, Name, Program
-from .problem_recognizer import ProblemFamily, ProblemSpec
+from .problem_recognizer import ProblemSpec
+from .recipes import BY_KEY
+from .transpile_js import recipe_javascript
 
 
 def _expression(node, filename: str) -> str:
@@ -41,34 +43,6 @@ def generate_javascript(program: Program | ProblemSpec, filename: str) -> str:
 
 
 def _problem_javascript(spec: ProblemSpec, filename: str) -> str:
-    if spec.family != ProblemFamily.SORT_ASCENDING:
-        raise CodeInEnglishError(filename, 1, f"JavaScript does not yet support {spec.family.value} problems", kind="unsupported")
-    for example in spec.examples:
-        if any(abs(value) > 2**53 - 1 for value in example.input["nums"]):
-            raise CodeInEnglishError(filename, example.source_line, "JavaScript sort examples need integers within the exact Number range", kind="unsupported")
-    examples = json.dumps([{"input": item.input, "expected": item.expected} for item in spec.examples], ensure_ascii=False)
-    return "\n".join((
-        '"use strict";',
-        "const fs = require('node:fs');",
-        "function sort_ascending(nums) {",
-        "  return [...nums].sort((a, b) => a - b);",
-        "}",
-        f"const examples = {examples};",
-        "if (process.argv.includes('--check-examples')) {",
-        "  for (const [index, example] of examples.entries()) {",
-        "    const actual = sort_ascending(example.input.nums);",
-        "    if (JSON.stringify(actual) !== JSON.stringify(example.expected)) {",
-        "      console.error(`Example ${index + 1} failed: ${JSON.stringify(actual)}`);",
-        "      process.exit(1);",
-        "    }",
-        "  }",
-        "  console.log(`All ${examples.length} examples passed.`);",
-        "} else {",
-        "  const input = JSON.parse(fs.readFileSync(0, 'utf8'));",
-        "  if (!Array.isArray(input.nums) || !input.nums.every(Number.isSafeInteger)) {",
-        "    throw new Error('input.nums must be a list of exact integers');",
-        "  }",
-        "  console.log(JSON.stringify(sort_ascending(input.nums)));",
-        "}",
-        "",
-    ))
+    if spec.family.value in BY_KEY or spec.stages:
+        return recipe_javascript(spec, filename)
+    raise CodeInEnglishError(filename, 1, f"JavaScript does not yet support {spec.family.value} problems", kind="unsupported")

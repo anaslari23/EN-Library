@@ -1,0 +1,99 @@
+import json
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+from codeinenglish import generate_file, solve
+from codeinenglish.recipes import RECIPES
+
+MIGRATED = {  # original families whose code now lives in recipes.py: (request, input, output)
+    "duplicates": ("Check whether a list of numbers contains a duplicate.", {"nums": [1, 2, 1]}, True),
+    "minimum": ("Find the smallest number in the list.", {"nums": [4, 2, 9]}, 2),
+    "maximum": ("Find the largest number in the list.", {"nums": [4, 2, 9]}, 9),
+    "sum": ("Calculate the sum of the list of numbers.", {"nums": [4, 2, 9]}, 15),
+    "sort_ascending": ("Sort the list of integers in ascending order.", {"nums": [3, 1, 3, -2]}, [-2, 1, 3, 3]),
+    "reverse_text": ("Reverse the given word.", {"text": "stressed"}, "desserts"),
+    "move_zeros": ("Move all zeros to the end of the list, preserving order.", {"nums": [0, 1, 0, 3]}, [1, 3, 0, 0]),
+    "merge_sorted_lists": ("Merge two sorted lists.", {"first": [1, 4], "second": [2, 3]}, [1, 2, 3, 4]),
+    "maximum_subarray_sum": ("Find the maximum contiguous subarray sum.", {"nums": [-2, 1, -3, 4, -1, 2, 1]}, 6),
+    "binary_search": ("Search the sorted list for the target and return its index.", {"nums": [1, 3, 5, 7], "target": 5}, 2),
+}
+
+CASES = {
+    "factorial": ("Write a program to compute the factorial of a number.", {"n": 5}, 120),
+    "fibonacci": ("Return the n-th Fibonacci number.", {"n": 10}, 55),
+    "is_prime": ("Check whether a number is prime.", {"n": 17}, True),
+    "gcd": ("Find the greatest common divisor of two numbers.", {"first": 12, "second": 18}, 6),
+    "count_vowels": ("Count the vowels in a text.", {"text": "Education"}, 5),
+    "remove_duplicates": ("Remove duplicates from a list of numbers.", {"nums": [3, 1, 3, 2, 1]}, [3, 1, 2]),
+    "second_largest": ("Find the second largest number in a list.", {"nums": [4, 9, 9, 7]}, 7),
+}
+
+
+class RecipeTests(unittest.TestCase):
+    def test_migrated_families_pass_their_examples_in_python_and_javascript(self):
+        for key, (request, given, expected) in MIGRATED.items():
+            for target, runner in (("python", sys.executable), ("javascript", "node")):
+                if runner == "node" and not shutil.which("node"):
+                    continue
+                with self.subTest(key=key, target=target), tempfile.TemporaryDirectory() as directory:
+                    source = Path(directory) / "p.en"
+                    source.write_text(f"target {target}\n# {request}\n# Example input: {json.dumps(given)}\n# Example output: {json.dumps(expected)}\n", encoding="utf-8")
+                    result = subprocess.run([runner, str(generate_file(source)), "--check-examples"], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_every_recipe_has_a_case(self):
+        self.assertEqual(set(CASES), {recipe.key for recipe in RECIPES})
+
+    def test_each_recipe_generates_code_that_passes_its_example(self):
+        for key, (request, given, expected) in CASES.items():
+            with self.subTest(key):
+                source = "import codeinpython library\n# " + request + "\n# Example input: " + json.dumps(given) + "\n# Example output: " + json.dumps(expected) + "\n"
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "out.py"
+                    path.write_text(solve(source), encoding="utf-8")
+                    result = subprocess.run([sys.executable, str(path), "--check-examples"], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    @unittest.skipUnless(shutil.which("node"), "Node.js is not installed")
+    def test_each_recipe_runs_in_javascript_and_passes_its_example(self):
+        for key, (request, given, expected) in CASES.items():
+            with self.subTest(key), tempfile.TemporaryDirectory() as directory:
+                source = Path(directory) / "p.en"
+                source.write_text("target javascript\n# " + request + "\n# Example input: " + json.dumps(given) + "\n# Example output: " + json.dumps(expected) + "\n", encoding="utf-8")
+                script = generate_file(source)
+                result = subprocess.run(["node", str(script), "--check-examples"], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_pipeline_runs_in_python_and_javascript(self):
+        request = "Remove duplicates from a list of numbers and then find the second largest number."
+        body = "# " + request + '\n# Example input: {"nums":[3,1,3,2,1]}\n# Example output: 2\n'
+        for target, runner, suffix in (("python", sys.executable, ".py"), ("javascript", "node", ".js")):
+            if runner == "node" and not shutil.which("node"):
+                continue
+            with self.subTest(target), tempfile.TemporaryDirectory() as directory:
+                source = Path(directory) / "p.en"
+                source.write_text(f"target {target}\n" + body, encoding="utf-8")
+                script = generate_file(source)
+                self.assertEqual(script.suffix, suffix)
+                result = subprocess.run([runner, str(script), "--check-examples"], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_pipeline_with_an_unknown_step_is_reported_not_dropped(self):
+        with self.assertRaisesRegex(Exception, "not the step after it"):
+            solve("import codeinpython library\n# Count the vowels in a text then sort ascending\n")
+
+    def test_unknown_request_suggests_closest_tasks(self):
+        with self.assertRaisesRegex(Exception, "Closest supported tasks: factorial"):
+            solve("import codeinpython library\n# Compute the factorail of a number list\n")
+
+    def test_prime_list_request_is_not_taken_by_the_prime_check(self):
+        with self.assertRaises(Exception):
+            solve("import codeinpython library\n# Generate all prime numbers below a limit.\n")
+
+
+if __name__ == "__main__":
+    unittest.main()
