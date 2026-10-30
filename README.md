@@ -18,7 +18,7 @@ output_path = codeinenglish.solve_file("problem.en")
 output_path = codeinenglish.generate_file("program.en")
 ```
 
-`generate_file` reads one shared source contract. In `en 0.2`, `#?` lines mark a problem request and ordinary `#` comments are documentation. `en 0.1` and headerless files retain their legacy behavior; headerless inputs emit a deprecation warning. Generated files receive deterministic provenance headers, and generation never executes them. A Python `import codeinenglish` only loads the API; call `generate_file` explicitly to translate.
+`generate_file` reads one shared source contract. In `en 0.2`, `#?` lines mark a problem request and ordinary `#` comments are documentation. `en 0.1` and headerless files retain their legacy behavior; headerless inputs emit a deprecation warning. Generated files receive deterministic provenance headers, and generation never executes them. A Python `import codeinenglish` also acts on `# write a program to ...` comments in the importing script: it generates the requested function and binds it in that script's namespace (supported problem families only; other scripts are unaffected).
 
 Public API: `CodeInEnglishError`, `translate`, `translate_file`, `solve`, `solve_file`, and `generate_file`.
 
