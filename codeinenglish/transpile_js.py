@@ -18,6 +18,7 @@ function enSum(values) { let total = 0; for (const value of values) total += val
 """
 _COMPARE = {ast.Eq: "===", ast.NotEq: "!==", ast.Lt: "<", ast.LtE: "<=", ast.Gt: ">", ast.GtE: ">="}
 _BINARY = {ast.Add: "+", ast.Sub: "-", ast.Mult: "*", ast.Div: "/"}
+_TESTS = {"isupper": r"/^\p{Lu}+$/u", "islower": r"/^\p{Ll}+$/u", "isdigit": r"/^[0-9]+$/", "isalpha": r"/^\p{L}+$/u", "isspace": r"/^\s+$/"}
 _METHODS = {"lower": "toLowerCase", "upper": "toUpperCase", "append": "push", "add": "add"}
 _CHECKS = {
     "integer": "Number.isSafeInteger({0})",
@@ -90,6 +91,8 @@ def _expr(node):
             return f"{arguments[0]}.join({_expr(node.func.value)})"
         if isinstance(node.func, ast.Attribute) and node.func.attr == "split" and not arguments:
             return f'{_expr(node.func.value)}.split(/\\s+/).filter((word) => word !== "")'
+        if isinstance(node.func, ast.Attribute) and node.func.attr in _TESTS and not arguments:
+            return f"{_TESTS[node.func.attr]}.test({_expr(node.func.value)})"
         if isinstance(node.func, ast.Attribute):
             method = _METHODS.get(node.func.attr)
             if method is None:
