@@ -5,6 +5,7 @@ from typing import Literal
 
 from .errors import CodeInEnglishError
 from .problem_prompt import ProblemExample, ProblemPrompt
+from .misses import record
 from .recipes import BY_KEY, RECIPES, RecipeFamily, suggest
 
 
@@ -92,6 +93,7 @@ def _has(text: str, *patterns: str) -> bool:
 
 def _error(prompt: ProblemPrompt, filename: str, message: str, kind: str = "unsupported") -> None:
     line = prompt.source_lines[0] if prompt.source_lines else 1
+    record(prompt.text, message, kind)
     raise CodeInEnglishError(filename, line, message, kind=kind)
 
 

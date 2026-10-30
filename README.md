@@ -59,3 +59,7 @@ python3 -m unittest discover -s tests -v
 ```
 
 Test fixtures live in `tests/fixtures/`; the package suite does not need the separate language repository.
+
+## Finding wordings to support
+
+Logging is off by default and never leaves your machine. To record requests that could not be generated, set `CODEINENGLISH_MISSES` to a file path, use the tool as usual, then run `python -m codeinenglish misses` to list each distinct request with its count, most frequent first. Frequent misses are the next recipes or wordings to add.

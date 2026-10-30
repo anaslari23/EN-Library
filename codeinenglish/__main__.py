@@ -11,6 +11,7 @@ from .translator import translate_file
 from .problem_solver import solve_file
 from .interpreter import generate_file, interpret_source, run_source
 from .migrate import migrate_file
+from .misses import summarize as summarize_misses
 
 
 def _argument_parser() -> argparse.ArgumentParser:
@@ -28,6 +29,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     generate.add_argument("--json", action="store_true", help="print the versioned run-plan response as JSON")
     run = commands.add_parser("run", help="execute an .en instruction program directly, without generating code")
     run.add_argument("source", help="Code in English source file")
+    misses = commands.add_parser("misses", help="list requests that could not be generated (needs CODEINENGLISH_MISSES logging)")
+    misses.add_argument("log", nargs="?", help="log file (defaults to $CODEINENGLISH_MISSES)")
     check = commands.add_parser("check", help="validate an .en file and report its run plan")
     check.add_argument("source", help="Code in English source file")
     check.add_argument("--output", help="output path to report (defaults to .py or .js based on target)")
@@ -48,6 +51,13 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if arguments.command in ("check",) or (arguments.command == "generate" and arguments.json):
             return _json_command(arguments)
+        if arguments.command == "misses":
+            rows = summarize_misses(arguments.log)
+            for count, request, kind in rows:
+                print(f"{count}\t{kind}\t{request}")
+            if not rows:
+                print("No misses logged. Set CODEINENGLISH_MISSES=/path/to/log to start recording.")
+            return 0
         if arguments.command == "run":
             run_source(Path(arguments.source).read_text(encoding="utf-8"), arguments.source)
             return 0
