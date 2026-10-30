@@ -9,7 +9,7 @@ from .contract import Diagnostic, ENSourceError, read_contract, SUPPORTED_VERSIO
 from .problem_recognizer import ProblemSpec
 from .translator import translate_file
 from .problem_solver import solve_file
-from .interpreter import generate_file, interpret_source
+from .interpreter import generate_file, interpret_source, run_source
 from .migrate import migrate_file
 
 
@@ -26,6 +26,8 @@ def _argument_parser() -> argparse.ArgumentParser:
     generate.add_argument("source", help="Code in English source file")
     generate.add_argument("--output", help="output path (defaults to .py or .js based on target)")
     generate.add_argument("--json", action="store_true", help="print the versioned run-plan response as JSON")
+    run = commands.add_parser("run", help="execute an .en instruction program directly, without generating code")
+    run.add_argument("source", help="Code in English source file")
     check = commands.add_parser("check", help="validate an .en file and report its run plan")
     check.add_argument("source", help="Code in English source file")
     check.add_argument("--output", help="output path to report (defaults to .py or .js based on target)")
@@ -46,6 +48,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if arguments.command in ("check",) or (arguments.command == "generate" and arguments.json):
             return _json_command(arguments)
+        if arguments.command == "run":
+            run_source(Path(arguments.source).read_text(encoding="utf-8"), arguments.source)
+            return 0
         if arguments.command == "migrate":
             changed, diff = migrate_file(arguments.source, arguments.to, write=arguments.write)
             if diff:

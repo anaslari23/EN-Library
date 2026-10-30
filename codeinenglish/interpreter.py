@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from .errors import CodeInEnglishError
+from .evaluator import run
 from .contract import Diagnostic, ENSourceError, read_contract
 from .ir import Program
 from .javascript_generator import generate_javascript
@@ -105,3 +106,11 @@ def _prepare_source(source: str, filename: str) -> tuple[str, str, str]:
         )
         return prepared, "instructions" if has_instructions else "problem", target
     return prepared, "instructions", "python"
+
+
+def run_source(source: str, filename: str = "<string>", read=input, write=print) -> None:
+    """Execute an EN instruction program directly, without generating code."""
+    program = interpret_source(source, filename)
+    if isinstance(program, ProblemSpec):
+        raise CodeInEnglishError(filename, 1, "problem requests cannot be run directly; use 'generate'", kind="unsupported")
+    run(program, read, write, filename)
