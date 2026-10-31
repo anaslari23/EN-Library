@@ -199,15 +199,15 @@ def read_contract(source: str, filename: str) -> SourceContract:
                 # 0.2 keywords are exact lowercase; 0.1 and legacy retain case folding.
                 if versioned_02 and not stripped.startswith("target"):
                     report("EN-E202", "error", line_number,
-                           f'Unknown target directive "{stripped}". Supported targets: python, javascript.')
+                           f'Unknown target directive "{stripped}". Supported targets: python, javascript, java.')
                     continue
                 words = stripped.split()
                 if len(words) != 2 or (versioned_02 and words[0] != "target"):
-                    report("EN-E202", "error", line_number, f'Unknown target directive "{stripped}". Supported targets: python, javascript.')
+                    report("EN-E202", "error", line_number, f'Unknown target directive "{stripped}". Supported targets: python, javascript, java.')
                     continue
                 name = words[1] if versioned_02 else words[1].casefold()
-                if name not in ("python", "javascript"):
-                    report("EN-E202", "error", line_number, f'Unknown target "{name}". Supported targets: python, javascript.')
+                if name not in ("python", "javascript", "java"):
+                    report("EN-E202", "error", line_number, f'Unknown target "{name}". Supported targets: python, javascript, java.')
                     continue
             else:
                 name = "python"

@@ -4,7 +4,7 @@ from .errors import CodeInEnglishError
 from .evaluator import run
 from .contract import Diagnostic, ENSourceError, read_contract
 from .ir import Program
-from .javascript_generator import generate_javascript
+from .javascript_generator import generate_java, generate_javascript
 from .parser import parse_program
 from .problem_prompt import LIBRARY_DIRECTIVE
 from .problem_recognizer import ProblemSpec
@@ -22,12 +22,13 @@ def generate_file(source_path: str | Path, output_path: str | Path | None = None
     if not contract.ok:
         raise ENSourceError(tuple(item for item in contract.diagnostics if item.severity == "error"))
     target = contract.target
-    destination = Path(output_path) if output_path is not None else source.with_suffix(".js" if target == "javascript" else ".py")
+    destination = Path(output_path) if output_path is not None else source.with_suffix({"javascript": ".js", "java": ".java"}.get(target, ".py"))
     if source.resolve() == destination.resolve():
         raise CodeInEnglishError(str(source), 1, "input and output paths must be different")
 
     interpreted = _interpret_contract(contract, str(source))
     generated = (generate_javascript(interpreted, str(source)) if target == "javascript" else
+                 generate_java(interpreted, str(source)) if target == "java" else
                  render_problem_python(interpreted) if isinstance(interpreted, ProblemSpec) else generate_python(interpreted))
     version_label = f"{contract.version[0]}.{contract.version[1]}" if contract.version else None
     generated = add_provenance(generated, source, version_label, target)
@@ -87,9 +88,9 @@ def _prepare_source(source: str, filename: str) -> tuple[str, str, str]:
                 raise CodeInEnglishError(filename, line_number, "target directive may appear only once")
             words = stripped.casefold().split()
             if len(words) != 2:
-                raise CodeInEnglishError(filename, line_number, "use 'target python' or 'target javascript' on its own line")
-            if words[1] not in ("python", "javascript"):
-                raise CodeInEnglishError(filename, line_number, f"target '{words[1]}' is not supported; use python or javascript", kind="unsupported")
+                raise CodeInEnglishError(filename, line_number, "use 'target python', 'target javascript' or 'target java' on its own line")
+            if words[1] not in ("python", "javascript", "java"):
+                raise CodeInEnglishError(filename, line_number, f"target '{words[1]}' is not supported; use python, javascript or java", kind="unsupported")
             directive = "target"
             target = words[1]
             lines[line_number - 1] = "\n" if original.endswith("\n") else ""
