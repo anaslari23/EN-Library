@@ -2,7 +2,7 @@
 import ast
 import difflib
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 
@@ -16,6 +16,8 @@ class Recipe:
     assumptions: tuple[str, ...]
     source: str  # the function, as plain Python
     rejects: tuple[str, ...] = ()  # any match means "not this recipe"
+    accepts: tuple[str, ...] = ()  # condition words this recipe implements itself ("below n"), exempt from the condition guard
+    stage: tuple[str, str] | None = None  # (regex, "list" | "scalar"): usable as a step in a composed request
 
 
 _NUM = (("n", "integer"),)
@@ -135,7 +137,8 @@ RECIPES = (
     Recipe("lcm", "least_common_multiple", (("first", "integer"), ("second", "integer")), "integer",
            (r"\b(?:least common multiple|lowest common multiple|lcm)\b",),
            ("The result is never negative; it is 0 if either number is 0.",),
-           "def least_common_multiple(first, second):\n    a = abs(first)\n    b = abs(second)\n    if a == 0 or b == 0:\n        return 0\n    x = a\n    y = b\n    while y:\n        x, y = y, x % y\n    return a // x * b\n"),
+           "def least_common_multiple(first, second):\n    a = abs(first)\n    b = abs(second)\n    if a == 0 or b == 0:\n        return 0\n    x = a\n    y = b\n    while y:\n        x, y = y, x % y\n    return a // x * b\n",
+           accepts=('multiple',)),
     Recipe("palindrome_number", "is_palindrome_number", _NUM, "boolean", (r"\bpalindrome\b", r"\b(?:number|integer)\b"),
            ("Negative numbers are not palindromes.",),
            "def is_palindrome_number(n):\n    if n < 0:\n        return False\n    remaining = n\n    reversed_number = 0\n    while remaining > 0:\n        reversed_number = reversed_number * 10 + remaining % 10\n        remaining = remaining // 10\n    return reversed_number == n\n",
@@ -157,7 +160,8 @@ RECIPES = (
            "def sum_to_n(n):\n    if n < 1:\n        return 0\n    return n * (n + 1) // 2\n"),
     Recipe("count_primes", "count_primes_below", _NUM, "integer", (r"\bprimes\b", r"\b(?:count|how many|number of)\b"),
            ("Count primes strictly less than n.",),
-           "def count_primes_below(n):\n    total = 0\n    for number in range(2, n):\n        prime = True\n        divisor = 2\n        while divisor * divisor <= number and prime:\n            if number % divisor == 0:\n                prime = False\n            divisor += 1\n        if prime:\n            total += 1\n    return total\n"),
+           "def count_primes_below(n):\n    total = 0\n    for number in range(2, n):\n        prime = True\n        divisor = 2\n        while divisor * divisor <= number and prime:\n            if number % divisor == 0:\n                prime = False\n            divisor += 1\n        if prime:\n            total += 1\n    return total\n",
+           accepts=('below', 'less than')),
     Recipe("binary_representation", "to_binary", _NUM, "string", (r"\bbinary\b", r"\b(?:convert|representation|to binary|as binary|in binary)\b"),
            ("Return null for a negative number; 0 is '0'.",),
            "def to_binary(n):\n    if n < 0:\n        return None\n    if n == 0:\n        return '0'\n    result = ''\n    while n > 0:\n        result = str(n % 2) + result\n        n = n // 2\n    return result\n",
@@ -202,7 +206,8 @@ RECIPES = (
     Recipe("value_range", "value_range", _NUMS, "integer_or_null",
            (r"\b(?:difference between the (?:largest|maximum|biggest|greatest) and (?:the )?(?:smallest|minimum|least)|range of)\b",),
            ("Largest minus smallest; return null for an empty list.",),
-           "def value_range(nums):\n    if not nums:\n        return None\n    return max(nums) - min(nums)\n"),
+           "def value_range(nums):\n    if not nums:\n        return None\n    return max(nums) - min(nums)\n",
+           accepts=('between',)),
     Recipe("count_positive", "count_positive_numbers", _NUMS, "integer",
            (r"\bpositive\b", r"\b(?:count|how many|number of)\b", r"\b(?:list|array|numbers)\b"),
            ("Zero is not positive.",),
@@ -254,6 +259,32 @@ RECIPES = (
            (r"\b(?:pounds?|lbs?)\b.{0,25}\b(?:to|into|in)\b.{0,10}\b(?:kilograms?|kgs?)\b",),
            ("1 pound = 0.45359237 kg. The result is not rounded.",),
            "def pounds_to_kilograms(pounds):\n    return pounds * 0.45359237\n"),
+
+    Recipe("filter_positive", "filter_positive_numbers", _NUMS, "integer_list",
+           (r"\bpositive\b", r"\b(?:filter|keep|select|only|extract|all|return|get)\b", r"\b(?:list|array|numbers)\b"),
+           ("Zero is not positive; keep the original order.",),
+           "def filter_positive_numbers(nums):\n    return [number for number in nums if number > 0]\n",
+           rejects=(r"\b(?:count|how many|sum|total|add|product|average|mean|largest|smallest)\b",)),
+    Recipe("filter_negative", "filter_negative_numbers", _NUMS, "integer_list",
+           (r"\bnegative\b", r"\b(?:filter|keep|select|only|extract|all|return|get)\b", r"\b(?:list|array|numbers)\b"),
+           ("Zero is not negative; keep the original order.",),
+           "def filter_negative_numbers(nums):\n    return [number for number in nums if number < 0]\n",
+           rejects=(r"\b(?:count|how many|sum|total|add|product|average|mean|largest|smallest)\b",)),
+    Recipe("double_numbers", "double_numbers", _NUMS, "integer_list",
+           (r"\b(?:doubles?|doubled|twice)\b", r"\b(?:each|every|all)\b", r"\b(?:list|array|numbers)\b"),
+           ("Keep the original order.",),
+           "def double_numbers(nums):\n    return [number * 2 for number in nums]\n",
+           rejects=(r"\b(?:sum|total|add|product|average|largest|smallest)\b",)),
+    Recipe("sort_descending", "sort_descending", _NUMS, "integer_list",
+           (r"\bdescending\b", r"\b(?:sort\w*|order\w*|arrange\w*)\b", r"\b(?:list|array|numbers)\b"),
+           ("Sort from largest to smallest and keep duplicate values.", "Return a new list; do not mutate the input."),
+           "def sort_descending(nums):\n    return list(reversed(sorted(nums)))\n",
+           rejects=(r"\b(?:search|target|index|position|merge|combine|binary)\b",)),
+    Recipe("count_items", "count_items", _NUMS, "integer",
+           (r"\b(?:count|how many|number of)\b", r"\b(?:items|elements|numbers|values|integers)\b"),
+           ("Count every entry, including repeats.",),
+           "def count_items(nums):\n    return len(nums)\n",
+           rejects=(r"\b(?:even|odd|positive|negative|unique|distinct|duplicates?|vowels?|words?|characters?|letters?|digits?|primes?|target|times|occurrences?|appears?|each|every)\b",)),
 )
 
 def _code(key, function, source):
@@ -281,7 +312,23 @@ CODE_ONLY = (
           "def binary_search(nums, target):\n    low = 0\n    high = len(nums) - 1\n    answer = -1\n    while low <= high:\n        middle = (low + high) // 2\n        if nums[middle] == target:\n            answer = middle\n            high = middle - 1\n        elif nums[middle] < target:\n            low = middle + 1\n        else:\n            high = middle - 1\n    return answer\n"),
 )
 
-BY_KEY = {recipe.key: recipe for recipe in (*RECIPES, *CODE_ONLY)}
+_DEDUPE = r"\b(?:(?:remove|delete|eliminate|drop|filter out)\s+(?:all\s+|the\s+)?duplicate(?:s| values| numbers)?|unique|distinct|duplicates?)\b"
+STAGES = {  # key -> (regex naming the step in a request, "list" if it yields a list else "scalar")
+    "filter_even": (r"\beven\b", "list"), "filter_odd": (r"\bodd\b", "list"),
+    "filter_positive": (r"\bpositive\b", "list"), "filter_negative": (r"\bnegative\b", "list"),
+    "square_numbers": (r"\bsquare[sd]?\b", "list"), "double_numbers": (r"\b(?:doubles?|doubled)\b", "list"),
+    "remove_duplicates": (_DEDUPE, "list"), "reverse_list": (r"\brevers\w*\b", "list"),
+    "running_total": (r"\b(?:running total|cumulative sum|prefix sums?)\b", "list"),
+    "sort_ascending": (r"\b(?:sort(?:ed)?|arrange|ascending(?: order)?|in order)\b", "list"),
+    "sort_descending": (r"\bdescending(?: order)?\b", "list"),
+    "sum": (r"\b(?:sum|total|add(?: them| these)?(?: all)? up|add up)\b", "scalar"),
+    "product": (r"\b(?:product|multiply)\b", "scalar"), "average": (r"\b(?:average|mean)\b", "scalar"),
+    "median": (r"\bmedian\b", "scalar"), "count_items": (r"\b(?:count|how many|number of)\b", "scalar"),
+    "maximum": (r"\b(?:maximum|largest|biggest|greatest|max)\b", "scalar"),
+    "minimum": (r"\b(?:minimum|smallest|least|min)\b", "scalar"),
+}
+BY_KEY = {recipe.key: replace(recipe, stage=STAGES.get(recipe.key)) for recipe in (*RECIPES, *CODE_ONLY)}
+TABLE_KEYS = {recipe.key for recipe in RECIPES}
 RecipeFamily = Enum("RecipeFamily", {recipe.key.upper(): recipe.key for recipe in RECIPES}, type=str)
 
 
@@ -302,3 +349,72 @@ def suggest(text: str, limit: int = 2) -> list[str]:
             scored.append((-score, recipe.key))
     scored.sort()
     return [key.replace("_", " ") for score, key in scored[:limit] if -score * 2 >= -scored[0][0]]
+
+
+_GENERIC = set("""number numbers list array text string word words character characters given each every find calculate
+compute return write program that from then after those them with into what which please also just give take make
+tell show result output value values integer integers item items element elements sequence collection this these
+there where have does here whole function using want need would should could been being like some any only gets
+produce get print want""".split())
+
+
+def _stem(word: str) -> str:
+    for suffix in ("ing", "ed", "es", "s"):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+            return word[: -len(suffix)]
+    return word
+
+
+_CLAUSE_BREAK = re.compile(r"\b(?:and|but|also|plus|while|along with|as well as)\b")
+_SMALL = set("the and for are was its all not you any can out use per via but too yet his her how who why".split())
+
+
+_ORIGINAL_WORDS = set("""pair pairs indices indexes positions position sorted ascending descending target merge combine binary search
+brackets balanced parentheses delimiters palindrome anagram anagrams unique frequency frequencies duplicate duplicates
+zeros zero subarray contiguous reverse backwards forwards forward backward lowest highest smallest largest
+case sensitive insensitive punctuation whitespace spaces letters letter order""".split())
+_COURTESY = set("thanks thank kindly cheers appreciated".split())
+
+
+def _vocabulary() -> set[str]:
+    """Every word any recipe, step or original family uses; a word outside it names something we cannot do."""
+    words = set(_GENERIC) | _SMALL | _ORIGINAL_WORDS | _COURTESY
+    for recipe in BY_KEY.values():
+        own = " ".join((*recipe.patterns, *recipe.rejects, *recipe.assumptions, recipe.key.replace("_", " "),
+                        recipe.function.replace("_", " "), *(recipe.stage[:1] if recipe.stage else ())))
+        words |= set(re.findall(r"[a-z]{3,}", own.lower()))
+    return {_stem(word) for word in words}
+
+
+def unexplained(text: str) -> list[str]:
+    """Words of an extra clause ("... and email it to my boss") that nothing in the catalog accounts for.
+
+    Only text after the first conjunction is checked: the part before it already matched a task.
+    """
+    parts = _CLAUSE_BREAK.split(text, maxsplit=1)
+    if len(parts) < 2:
+        return []
+    known = _vocabulary()
+    return [word for word in re.findall(r"[a-z]{3,}", parts[1]) if _stem(word) not in known]
+
+
+# Only operations and tasks with an unambiguous name: words like "sorted", "in order" or "number of" also
+# describe inputs and outputs, so treating them as separate requested steps would refuse ordinary wordings.
+_REMOVE_DUPLICATES = r"\b(?:remove|delete|eliminate|drop|filter out)\s+(?:all\s+|the\s+)?duplicate(?:s| values| numbers)?\b"  # "distinct" alone just describes values
+_NAMED_STEPS = {"remove_duplicates", "reverse_list", "running_total", "square_numbers", "double_numbers"}
+_NAMED_TASKS = {"factorial", "fibonacci", "is_prime", "palindrome_number", "pangram", "collatz", "fizzbuzz", "count_vowels",
+                "remove_vowels", "median", "gcd", "lcm", "perfect_square", "leap_year", "power_of_two", "sum_of_digits",
+                "count_primes", "binary_representation"}
+
+
+def foreign_tasks(text: str, spec_key: str) -> list[str]:
+    """Names of other tasks the request also asks for, which the chosen task would silently drop."""
+    own = BY_KEY.get(spec_key)
+    own_text = " ".join((spec_key.replace("_", " "), *((*own.patterns, *own.assumptions, own.function) if own else ()))).lower()
+    found = []
+    for key in _NAMED_STEPS | _NAMED_TASKS:
+        regex = _REMOVE_DUPLICATES if key == "remove_duplicates" else STAGES[key][0] if key in STAGES else BY_KEY[key].patterns[0]
+        match = re.search(regex, text)
+        if key != spec_key and match and match.group() not in own_text and not re.search(regex, own_text):
+            found.append(key.replace("_", " "))
+    return sorted(found)

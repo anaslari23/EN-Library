@@ -23,10 +23,10 @@
     ["Return the greatest value in this list.", "maximum"],
     ["Find the first letter that appears once in the text.", "first_unique_character"],
     ["Write this string backwards.", "reverse_text"],
-    ["Order the numbers from lowest to highest.", "sort_ascending"]
+    ["Order the numbers from lowest to highest.", "sort_ascending"],
+    ["Sort the numbers in descending order.", "sort_descending"]
   ],
   "rejected": [
-    "Sort the numbers in descending order.",
     "Sort these numbers.",
     "Write a web browser.",
     "Find two numbers adding to target and return every matching pair of indices.",

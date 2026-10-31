@@ -79,6 +79,11 @@ CASES = {
     "miles_to_km": ("Convert miles to kilometers.", {"miles": 10}, 10 * 1.609344),
     "kg_to_pounds": ("Convert kilograms to pounds.", {"kilograms": 2}, 2 * 2.2046226218),
     "pounds_to_kg": ("Convert pounds to kilograms.", {"pounds": 2}, 2 * 0.45359237),
+    "filter_positive": ("Keep only the positive numbers from a list.", {"nums": [3, -1, 0, 5]}, [3, 5]),
+    "filter_negative": ("Keep only the negative numbers from a list.", {"nums": [3, -1, 0, -5]}, [-1, -5]),
+    "double_numbers": ("Double each number in a list.", {"nums": [1, 2, 3]}, [2, 4, 6]),
+    "sort_descending": ("Sort the numbers in descending order.", {"nums": [1, 3, 2]}, [3, 2, 1]),
+    "count_items": ("Count the numbers in a list.", {"nums": [4, 4, 9]}, 3),
     "running_total": ("Calculate the running total of a list of numbers.", {"nums": [1, 2, 3]}, [1, 3, 6]),
 }
 

@@ -5,8 +5,9 @@ from typing import Literal
 
 from .errors import CodeInEnglishError
 from .problem_prompt import ProblemExample, ProblemPrompt
+from .compose import analyze as compose_analyze
 from .misses import record
-from .recipes import BY_KEY, RECIPES, RecipeFamily, suggest
+from .recipes import BY_KEY, RECIPES, STAGES, TABLE_KEYS, RecipeFamily, foreign_tasks, suggest, unexplained
 
 
 class ProblemFamily(str, Enum):
@@ -181,11 +182,28 @@ def _pipeline(prompt: ProblemPrompt, text: str, filename: str) -> tuple[ProblemS
     return tuple(stages)
 
 
-def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> ProblemSpec:
-    """Recognize a supported DSA intent from explicit deterministic phrase rules."""
+def _stage_spec(key: str, prompt: ProblemPrompt) -> ProblemSpec:
+    """The one-step spec for a recipe or original family used as a stage of a composed request."""
+    recipe = next((item for item in RECIPES if item.key == key), None)
+    if recipe:
+        inputs = tuple(ProblemInput(name, kind) for name, kind in recipe.inputs)
+        assumptions = tuple(ProblemAssumption(note, "defaulted") for note in recipe.assumptions)
+        return ProblemSpec(RecipeFamily(key), inputs, recipe.result, frozenset(), (key,), assumptions, prompt.examples)
+    family = ProblemFamily(key)
+    return ProblemSpec(family, _inputs(family), family.value, frozenset(), (key,), _assumptions(family), prompt.examples)
+
+
+def _recognize(prompt: ProblemPrompt, filename: str = "<string>") -> ProblemSpec:
+    """Match one request against the families and recipes (see recognize_problem for the guards around it)."""
     text = _normalize(prompt.text)
     if not text:
         _error(prompt, filename, "the problem statement is empty")
+
+    keys, _ = compose_analyze(text)
+    if keys:
+        stages = tuple(_stage_spec(key, prompt) for key in keys)
+        assumptions = tuple(item for stage in stages for item in stage.assumptions)
+        return ProblemSpec(ProblemFamily.PIPELINE, stages[0].inputs, stages[-1].result, frozenset(), ("composed",), assumptions, prompt.examples, stages)
 
     stages = _pipeline(prompt, text, filename)
     if stages:
@@ -302,7 +320,7 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
             _error(prompt, filename, "the frequency request is negated; please say what result you want", "ambiguous")
         return ProblemSpec(ProblemFamily.FREQUENCIES, _inputs(ProblemFamily.FREQUENCIES), "frequency_map", frozenset(), ("frequency", "occurrences"), _assumptions(ProblemFamily.FREQUENCIES), prompt.examples)
 
-    if _has(text, r"\b(?:duplicate|duplicates|repeated value|is repeated|are repeated|repeats?|appears more than once|occurs more than once)\b"):
+    if _has(text, r"\b(?:duplicate|duplicates|repeated value|is repeated|are repeated|repeats?|appears more than once|occurs more than once|appears twice|occurs twice)\b"):
         if _has(text, r"\b(?:not|never|no)\b.{0,24}\b(?:duplicate|repeated|more than once)\b"):
             _error(prompt, filename, "I recognized a duplicate check, but the request is negated; please clarify the desired result", "ambiguous")
         return ProblemSpec(ProblemFamily.DUPLICATES, _inputs(ProblemFamily.DUPLICATES), "contains_duplicate", frozenset(), ("duplicate", "repeated"), _assumptions(ProblemFamily.DUPLICATES), prompt.examples)
@@ -396,3 +414,37 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
     if not _has(text, _DATA):
         _error(prompt, filename, "I couldn't identify the input data. Describe the list, text, or values the problem uses." + hint, "ambiguous")
     _error(prompt, filename, "I don't recognize this problem type yet. Try describing its input and the result you want." + hint)
+
+
+_ACTION = re.compile(  # things a generated function cannot do; naming one means part of the request would be dropped
+    r"\b(?:e ?mail|send|save|upload|download|plot|draw|chart|graph|translate|tweet|notify|message|boss|files?"
+    r"|colou?r|red|green|blue|speak|open|delete)\b"
+)
+_NUMBER_WORD = r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)"
+_CONDITION = re.compile(
+    r"\b(?:(?:greater|less|more|fewer|larger|smaller|bigger|longer|shorter|higher|lower) than(?! once| twice)|above|below|between"
+    r"|divisible by|multiples? of|(?:starts?|ends?|begins?) with|(?:starting|ending|beginning) with|at (?:least|most)"
+    r"|excluding|except|other than|skip(?:ping)?|but not|sorted? by|grouped? by|(?:first|last|top) " + _NUMBER_WORD + r")\b"
+)
+
+
+def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> ProblemSpec:
+    """Recognize a supported intent, refusing instead of quietly dropping part of the request."""
+    text = _normalize(prompt.text)
+    spec = _recognize(prompt, filename)
+    action = _ACTION.search(text)
+    if action:
+        _error(prompt, filename, f"I can only write the function itself; I can't '{action.group()}' for you", "unsupported")
+    extra = [] if spec.stages or spec.family.value not in TABLE_KEYS else unexplained(text)
+    if extra:
+        _error(prompt, filename, f"I read this as '{spec.function_name.replace('_', ' ')}', but I can't account for: {', '.join(extra)}. Say only what that task needs, or ask for one step at a time.", "ambiguous")
+    others = [] if spec.stages else foreign_tasks(text, spec.family.value)
+    if others:
+        _error(prompt, filename, f"This asks for '{spec.function_name.replace('_', ' ')}' but also mentions {', '.join(others)}; I can do one task per request (or steps joined with 'then')", "ambiguous")
+    condition = _CONDITION.search(text)
+    recipe = BY_KEY.get(spec.family.value)
+    if condition and (spec.stages or not (recipe and any(word in condition.group() for word in recipe.accepts))):
+        _error(prompt, filename, f"I can't apply the condition '{condition.group()}' yet, and running the plain task would give a wrong answer", "unsupported")
+    if not spec.stages and spec.family.value in STAGES and compose_analyze(text)[1] >= 2:
+        _error(prompt, filename, "I found several steps in this request but could not order them; say them in order with 'then'", "ambiguous")
+    return spec

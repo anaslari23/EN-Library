@@ -23,7 +23,6 @@ class RecognizeProblemTests(unittest.TestCase):
                 self.assertEqual(spec.result, "sorted_integer_list")
         for prompt in (
             "Sort the numbers.",
-            "Sort the numbers in descending order.",
             "Sort and reverse the list of numbers.",
             "Is the list of numbers sorted in ascending order?",
         ):

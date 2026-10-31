@@ -1,0 +1,85 @@
+"""Compose list stages mentioned in one request: "sum of the squares of the even numbers in a list".
+
+Each recipe with a `stage` is a building block. The request is scanned for blocks, ordered from its
+structure, type-checked (only the last block may produce a single value), and refused if any meaningful
+word is left unexplained, so it never quietly drops part of what was asked.
+"""
+import re
+
+from .recipes import BY_KEY
+
+_LIST_NOUN = re.compile(r"\b(?:list|array|numbers?|integers?|values?|elements?|items?|sequence)\b")
+_CONJUNCTION = re.compile(r"\b(?:and|then|afterwards|followed by|after that)\b")
+_PHRASES = (  # fixed phrasings rewritten before scanning, so their words are not read as separate stages
+    (re.compile(r"\b(?:from )?(?:smallest|lowest|least) to (?:largest|highest|greatest|biggest)\b"), "ascending"),
+    (re.compile(r"\b(?:from )?(?:largest|highest|greatest|biggest) to (?:smallest|lowest|least)\b"), "descending"),
+)
+_STOP = set("""list array numbers integers values elements items given each every find calculate compute return write
+program that from then after those them with into what which whole please also just give take make tell show result
+output sequence collection this these there where have does here afterwards followed number only""".split())
+_MEANINGFUL_SMALL = re.compile(r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b")
+
+
+def _stages():
+    return [(key, re.compile(recipe.stage[0]), recipe.stage[1]) for key, recipe in BY_KEY.items() if recipe.stage]
+
+
+def analyze(text: str) -> tuple[list[str] | None, int]:
+    """(recipe keys in application order or None, number of distinct steps found).
+
+    A step count of 2+ with no order means the request names several steps that could not be combined."""
+    if not _LIST_NOUN.search(text):
+        return None, 0
+    for pattern, replacement in _PHRASES:
+        text = pattern.sub(replacement, text)
+    found = []
+    for key, pattern, out in _stages():
+        found += [(match.start(), match.end(), key, out) for match in pattern.finditer(text)]
+    found.sort(key=lambda item: (item[0], -(item[1] - item[0])))
+    mentions, end = [], -1
+    for item in found:  # longest-first, no overlaps
+        if item[0] >= end:
+            mentions.append(item)
+            end = item[1]
+    if {"sort_descending", "sort_ascending"} <= {item[2] for item in mentions}:
+        mentions = [item for item in mentions if item[2] != "sort_ascending"]
+    rest = text
+    for start, stop, _, _ in reversed(mentions):
+        rest = rest[:start] + " " + rest[stop:]
+    seen, unique = set(), []
+    for item in mentions:  # "sort ... in ascending order" names one step twice; keep the first
+        if item[2] not in seen:
+            seen.add(item[2])
+            unique.append(item)
+    mentions = unique
+    count = len(mentions)
+    if count < 2:
+        return None, count
+    if {"sort_ascending", "reverse_list"} <= {item[2] for item in mentions}:
+        return None, count  # "sort and reverse" is ambiguous (descending order?); let the older rules ask
+    if _MEANINGFUL_SMALL.search(rest) or any(len(word) >= 4 and word not in _STOP for word in re.findall(r"[a-z]+", rest)):
+        return None, count
+    # a conjunction between two mentions means "in the order said"; otherwise the later one is applied first
+    after = {index: set() for index in range(len(mentions))}
+    for index in range(len(mentions) - 1):
+        gap = text[mentions[index][1]:mentions[index + 1][0]]
+        first, second = (index, index + 1) if _CONJUNCTION.search(gap) else (index + 1, index)
+        after[first].add(second)
+    waiting = {index: sum(index in later for later in after.values()) for index in after}
+    order = []
+    while waiting:
+        ready = [index for index, count in waiting.items() if count == 0]
+        if len(ready) != 1:
+            return None, count  # cyclic or ambiguous
+        order.append(ready[0])
+        del waiting[ready[0]]
+        for later in after[ready[0]]:
+            waiting[later] -= 1
+    outs = [mentions[index][3] for index in order]
+    if any(out != "list" for out in outs[:-1]):
+        return None, count  # a single value cannot be fed into another list stage
+    return [mentions[index][2] for index in order], count
+
+
+def plan(text: str) -> list[str] | None:
+    return analyze(text)[0]
