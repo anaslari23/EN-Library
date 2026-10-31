@@ -8,19 +8,29 @@ import zipfile
 from pathlib import Path
 
 
-NAME = "codeinenglish"
+NAME = "en"  # the PyPI distribution; the import package is PACKAGE
+PACKAGE = "codeinenglish"
 VERSION = "0.3.0"
 DIST_INFO = f"{NAME}-{VERSION}.dist-info"
 ROOT = Path(__file__).parent
 
 
 def _metadata() -> bytes:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
     return (
         "Metadata-Version: 2.1\n"
         f"Name: {NAME}\n"
         f"Version: {VERSION}\n"
-        "Summary: A tiny offline English-like programming language\n"
-        "Requires-Python: >=3.10\n\n"
+        "Summary: Write code in plain English, offline: an English-like language, interpreter, and comment-driven code generator\n"
+        "Author: anaslari23\n"
+        "License: MIT\n"
+        "Project-URL: Homepage, https://github.com/anaslari23/EN-Library\n"
+        "Classifier: License :: OSI Approved :: MIT License\n"
+        "Classifier: Programming Language :: Python :: 3\n"
+        "Classifier: Topic :: Software Development :: Code Generators\n"
+        "Requires-Python: >=3.10\n"
+        "Description-Content-Type: text/markdown\n\n"
+        + readme
     ).encode()
 
 
@@ -34,7 +44,7 @@ def _wheel() -> bytes:
 
 
 def _entry_points() -> bytes:
-    return b"[console_scripts]\ncodeinenglish = codeinenglish.__main__:main\n"
+    return b"[console_scripts]\ncodeinenglish = codeinenglish.__main__:main\nen = codeinenglish.__main__:main\n"
 
 
 def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None):
@@ -43,6 +53,7 @@ def prepare_metadata_for_build_wheel(metadata_directory, config_settings=None):
     (dist_info / "METADATA").write_bytes(_metadata())
     (dist_info / "WHEEL").write_bytes(_wheel())
     (dist_info / "entry_points.txt").write_bytes(_entry_points())
+    (dist_info / "LICENSE").write_bytes((ROOT / "LICENSE").read_bytes())
     return DIST_INFO
 
 
@@ -53,11 +64,11 @@ def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
 
     files = {
         path.relative_to(ROOT).as_posix(): path.read_bytes()
-        for path in sorted((ROOT / NAME).glob("*.py"))
+        for path in sorted((ROOT / PACKAGE).glob("*.py"))
     }
     files.update({
         path.relative_to(ROOT).as_posix(): path.read_bytes()
-        for path in sorted((ROOT / NAME / "schema").glob("*.json"))
+        for path in sorted((ROOT / PACKAGE / "schema").glob("*.json"))
     })
     if metadata_directory:
         metadata_path = Path(metadata_directory)
@@ -67,6 +78,7 @@ def build_wheel(wheel_directory, config_settings=None, metadata_directory=None):
             "METADATA": _metadata(),
             "WHEEL": _wheel(),
             "entry_points.txt": _entry_points(),
+            "LICENSE": (ROOT / "LICENSE").read_bytes(),
         }
 
     for filename, content in dist_files.items():
