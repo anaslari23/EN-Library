@@ -7,6 +7,7 @@ from .errors import CodeInEnglishError
 from .ir import Program
 from .problem_recognizer import ProblemSpec
 from .recipes import BY_KEY
+from .c_program import program_c
 from .java_program import program_java
 from .js_program import program_javascript
 from .transpile_js import recipe_javascript
@@ -28,3 +29,9 @@ def generate_java(program: Program | ProblemSpec, filename: str) -> str:
     if isinstance(program, ProblemSpec):
         raise CodeInEnglishError(filename, 1, "Java output supports instruction programs for now; use target python or javascript for problem requests", kind="unsupported")
     return program_java(program, filename)
+
+
+def generate_c(program: Program | ProblemSpec, filename: str) -> str:
+    if isinstance(program, ProblemSpec):
+        raise CodeInEnglishError(filename, 1, "C output supports instruction programs for now; use target python, javascript or java for problem requests", kind="unsupported")
+    return program_c(program, filename)

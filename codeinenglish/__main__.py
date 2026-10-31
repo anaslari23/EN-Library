@@ -26,7 +26,7 @@ def _argument_parser() -> argparse.ArgumentParser:
     solve.add_argument("--output", help="Python output path (defaults to the same name with .py)")
     generate = commands.add_parser("generate", help="generate target-language source from a supported .en file")
     generate.add_argument("source", help="Code in English source file")
-    generate.add_argument("--output", help="output path (defaults to .py, .js or .java based on target)")
+    generate.add_argument("--output", help="output path (defaults to .py, .js, .java or .c based on target)")
     generate.add_argument("--json", action="store_true", help="print the versioned run-plan response as JSON")
     run = commands.add_parser("run", help="execute an .en instruction program directly, without generating code")
     run.add_argument("source", help="Code in English source file")
@@ -34,7 +34,7 @@ def _argument_parser() -> argparse.ArgumentParser:
     misses.add_argument("log", nargs="?", help="log file (defaults to $CODEINENGLISH_MISSES)")
     check = commands.add_parser("check", help="validate an .en file and report its run plan")
     check.add_argument("source", help="Code in English source file")
-    check.add_argument("--output", help="output path to report (defaults to .py, .js or .java based on target)")
+    check.add_argument("--output", help="output path to report (defaults to .py, .js, .java or .c based on target)")
     check.add_argument("--json", action="store_true", required=True, help="print the contract and run plan as JSON")
     migrate = commands.add_parser("migrate", help="safely update an .en source version")
     migrate.add_argument("source", help="source file to migrate")
@@ -103,7 +103,7 @@ def _json_command(arguments) -> int:
     contract = read_contract(source_text, str(source_path))
     for warning in (item for item in contract.diagnostics if item.severity == "warning"):
         print(f"{warning.file}:{warning.line}:{warning.column}: {warning.code}: {warning.message}", file=sys.stderr)
-    output_path = Path(output_argument) if output_argument else source_path.with_suffix({"javascript": ".js", "java": ".java"}.get(contract.target, ".py"))
+    output_path = Path(output_argument) if output_argument else source_path.with_suffix({"javascript": ".js", "java": ".java", "c": ".c"}.get(contract.target, ".py"))
     diagnostics = list(contract.diagnostics)
     interpreted = None
     if contract.ok:
@@ -123,7 +123,7 @@ def _json_command(arguments) -> int:
         run_args.append("--check-examples")
     plan = None if has_errors else {
         "output_path": absolute_output,
-        "runtime": {"javascript": "node", "java": "java"}.get(contract.target, "python"),
+        "runtime": {"javascript": "node", "java": "java", "c": "c"}.get(contract.target, "python"),
         "run_examples": bool(examples),
         "run_args": run_args,
     }

@@ -76,3 +76,7 @@ python3 dist/en.pyz generate program.en
 
 Scripts can use `import codeinenglish` with `PYTHONPATH=dist/en.pyz`. The VS Code extension is only a convenience: it adds a Run button over these same commands.
 
+## Nothing at all? Rebuild it from memory
+
+`seed/` holds the EN core language as a phrasebook small enough to retype (`en.py` 3.9 KB, `en.js` 1.4 KB). It generates Python, JavaScript and C. See `seed/README.md`. `target c` in the full tool covers the same core.
+

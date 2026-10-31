@@ -9,7 +9,7 @@
     "file": {"type": "string"},
     "version": {"type": ["string", "null"]},
     "supported_versions": {"type": "array", "items": {"type": "string"}},
-    "target": {"enum": ["python", "javascript", "java"]},
+    "target": {"enum": ["python", "javascript", "java", "c"]},
     "form": {"enum": ["instructions", "problem", null]},
     "examples": {
       "type": "object",
@@ -25,7 +25,7 @@
           "required": ["output_path", "runtime", "run_examples", "run_args"],
           "properties": {
             "output_path": {"type": "string"},
-            "runtime": {"enum": ["python", "node", "java"]},
+            "runtime": {"enum": ["python", "node", "java", "c"]},
             "run_examples": {"type": "boolean"},
             "run_args": {"type": "array", "items": {"type": "string"}}
           },

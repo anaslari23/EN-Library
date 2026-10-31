@@ -177,3 +177,10 @@ class ParseProgramTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NaturalComparisonTests(unittest.TestCase):
+    def test_is_greater_than_and_is_less_than_read_like_english(self):
+        for source in ("set x to 5\nif x is greater than 3 then\nshow x\nend if\n", "set x to 5\nif x greater than 3 then\nshow x\nend if\n"):
+            self.assertEqual(parse_program(source), parse_program(source.replace("is greater", "greater")))
+        parse_program("set x to 5\nif x is less than 9 then\nshow x\nend if\n")

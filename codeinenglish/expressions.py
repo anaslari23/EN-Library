@@ -65,6 +65,8 @@ class _ExpressionParser:
     _operators = (
         (("is", "in"), "in", 1),
         (("is", "not"), "!=", 1),
+        (("is", "greater", "than"), ">", 1),
+        (("is", "less", "than"), "<", 1),
         (("greater", "than"), ">", 1),
         (("less", "than"), "<", 1),
         (("is",), "==", 1),
