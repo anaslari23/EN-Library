@@ -143,6 +143,8 @@ def _strategy(spec):
 
 def _functions(spec):
     """The stage functions, then the function the runner calls (a pipeline composes its stages)."""
+    if spec.program is not None:
+        return [*spec.program.helper_asts(), spec.program.function_ast()]
     if not spec.stages:
         return [_strategy(spec)]
     if len(spec.stages) == 1:  # a single step needs no wrapper around itself

@@ -29,6 +29,7 @@ class ProblemFamily(str, Enum):
     BALANCED_DELIMITERS = "balanced_delimiters"
     SORT_ASCENDING = "sort_ascending"
     PIPELINE = "pipeline"
+    SYNTH = "synth"
 
 
 @dataclass(frozen=True)
@@ -53,9 +54,12 @@ class ProblemSpec:
     assumptions: tuple[ProblemAssumption, ...] = ()
     examples: tuple[ProblemExample, ...] = ()
     stages: tuple["ProblemSpec", ...] = ()
+    program: object = None  # a synthesized typed pipeline (family SYNTH)
 
     @property
     def function_name(self) -> str:
+        if self.program is not None:
+            return self.program.function_name
         if self.stages:
             return "_then_".join(stage.function_name for stage in self.stages)
         if self.family.value in BY_KEY:
@@ -77,6 +81,7 @@ class ProblemSpec:
             ProblemFamily.MAXIMUM_SUBARRAY_SUM: "maximum_subarray_sum",
             ProblemFamily.BALANCED_DELIMITERS: "has_balanced_delimiters",
             ProblemFamily.SORT_ASCENDING: "sort_ascending",
+            ProblemFamily.SYNTH: "synthesized",
         }[self.family]
 
 
@@ -436,7 +441,74 @@ _CONDITION = re.compile(
 )
 
 
+def _synth_spec(program, prompt: ProblemPrompt) -> ProblemSpec:
+    name, kind = program.parameter
+    return ProblemSpec(ProblemFamily.SYNTH, (ProblemInput(name, kind),), program.result_type, frozenset(), ("synthesized",),
+                       tuple(ProblemAssumption(text, "defaulted") for text in program.assumptions()), prompt.examples, (), program)
+
+
+def _disagrees(catalog: ProblemSpec, program) -> bool:
+    """True when the catalog's reading behaves differently from the synthesized one on the probe inputs.
+
+    The synthesized reading must account for every word of the request; a catalog match that dropped a word
+    (a quietly ignored "cubes", say) shows up here as a different answer."""
+    import copy
+    from .problem_solver import render_problem_python
+    from .synth import PROBES, _fingerprint, _run
+
+    if len(catalog.inputs) != 1 or catalog.inputs[0].kind.replace("sorted_", "") != program.parameter[1]:
+        return len(catalog.inputs) == 1 and catalog.inputs[0].kind in ("integer_list", "string", "integer")
+    namespace = {"__name__": "catalog_check"}
+    exec(compile(render_problem_python(catalog), "<catalog>", "exec"), namespace)
+    function = namespace[catalog.function_name]
+    for probe in PROBES[program.input_type]:
+        try:
+            ours = _fingerprint(function(copy.deepcopy(probe)))
+        except Exception:
+            continue
+        theirs = _fingerprint(_run(program.chain, copy.deepcopy(probe)))
+        if isinstance(theirs, str) and theirs.startswith("ERR:"):
+            continue
+        if isinstance(ours, float) or isinstance(theirs, float):
+            try:
+                if abs(ours - theirs) < 1e-9:
+                    continue
+            except TypeError:
+                pass
+        if ours != theirs:
+            return True
+    return False
+
+
 def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> ProblemSpec:
+    """Recognize a supported intent.
+
+    Two independent readings run side by side: the curated catalog and a typed-operation synthesis (synth.py).
+    Where the catalog has no answer the synthesized program is used; where both answer but behave differently,
+    the one that explains every word wins; embedded examples must be reproducible by whichever is chosen."""
+    from .synth import SynthRefusal, synthesize
+
+    program, refusal = None, None
+    try:
+        program = synthesize(_normalize(_MINUS.sub("minus", prompt.text)), prompt.examples)
+    except SynthRefusal as problem:
+        refusal = problem
+    try:
+        catalog = _recognize_catalog(prompt, filename)
+    except CodeInEnglishError as error:
+        if error.kind not in ("unsupported", "ambiguous") or "I can only write the function itself" in error.message:
+            raise
+        if program is not None:
+            return _synth_spec(program, prompt)
+        if refusal is not None and refusal.kind == "ambiguous":  # includes "no reading reproduces your example"
+            raise CodeInEnglishError(filename, error.line, refusal.message, kind="ambiguous") from None
+        raise
+    if program is not None and _disagrees(catalog, program):
+        return _synth_spec(program, prompt)
+    return catalog
+
+
+def _recognize_catalog(prompt: ProblemPrompt, filename: str = "<string>") -> ProblemSpec:
     """Recognize a supported intent, refusing instead of quietly dropping part of the request."""
     text = _normalize(prompt.text)
     spec = _recognize(prompt, filename)

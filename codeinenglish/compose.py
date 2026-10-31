@@ -22,6 +22,7 @@ _PHRASES = (  # fixed phrasings rewritten before scanning, so their words are no
 _STOP = set("""list array numbers integers values elements items given each every find calculate compute return write
 program that from then after those them with into what which whole please also just give take make tell show result
 output sequence collection this these there where have does here afterwards followed number only keep retain select filter pick extract convert converting change changing turning transform version applying apply using string text sentence phrase left remaining once still""".split())
+_NEGATION = re.compile(r"\b(?:not|no|never|neither|nor|without|non)\b")
 _MEANINGFUL_SMALL = re.compile(r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b")
 
 
@@ -80,6 +81,8 @@ def analyze(text: str) -> tuple[list[str] | None, int]:
         return None, count
     if {"sort_ascending", "reverse_list"} <= {item[2] for item in mentions}:
         return None, count  # "sort and reverse" is ambiguous (descending order?); let the older rules ask
+    if _NEGATION.search(rest):  # "not divisible by 3" must not quietly become "divisible by 3"
+        return None, count
     if _MEANINGFUL_SMALL.search(rest) or any(len(word) >= 4 and word not in _STOP for word in re.findall(r"[a-z]+", rest)):
         return None, count
     # a conjunction between two mentions means "in the order said"; otherwise the later one is applied first

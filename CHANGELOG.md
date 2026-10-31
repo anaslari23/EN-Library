@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added typed synthesis (`synth.py`): about 90 composable operations, type-checked orderings, behaviour-based ambiguity detection, example verification, and cross-checking against the catalog.
+- Fixed catalog answers that silently dropped a word (`not`, `cubes`), mis-typed a number request as a list sum, or read `up to n` as exclusive.
+- Named functions in comments (`# write a program called NAME to ...`) and an announcement on import.
+
 ## 0.3.0 — 2026-10-31
 
 - Added `codeinenglish run` and `import codeinenglish` generation from `# write a program to ...` comments.
