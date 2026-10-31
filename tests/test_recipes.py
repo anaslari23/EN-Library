@@ -79,6 +79,7 @@ CASES = {
     "miles_to_km": ("Convert miles to kilometers.", {"miles": 10}, 10 * 1.609344),
     "kg_to_pounds": ("Convert kilograms to pounds.", {"kilograms": 2}, 2 * 2.2046226218),
     "pounds_to_kg": ("Convert pounds to kilograms.", {"pounds": 2}, 2 * 0.45359237),
+    "count_characters": ("Find the length of a text.", {"text": "a b!"}, 4),
     "filter_positive": ("Keep only the positive numbers from a list.", {"nums": [3, -1, 0, 5]}, [3, 5]),
     "filter_negative": ("Keep only the negative numbers from a list.", {"nums": [3, -1, 0, -5]}, [-1, -5]),
     "double_numbers": ("Double each number in a list.", {"nums": [1, 2, 3]}, [2, 4, 6]),
@@ -109,6 +110,23 @@ class RecipeTests(unittest.TestCase):
             ("Keep the numbers divisible by 3.", {"nums": [3, 4, 6]}, [3, 6]),
             ("Count the numbers greater than -2.", {"nums": [-3, -1, 0]}, 2),
             ("Find the largest number below 100 in the list.", {"nums": [5, 150, 99]}, 99),
+        )
+        for request, given, expected in cases:
+            for target, runner in (("python", sys.executable), ("javascript", "node")):
+                if runner == "node" and not shutil.which("node"):
+                    continue
+                with self.subTest(request=request, target=target), tempfile.TemporaryDirectory() as directory:
+                    source = Path(directory) / "p.en"
+                    source.write_text(f"target {target}\n# {request}\n# Example input: {json.dumps(given)}\n# Example output: {json.dumps(expected)}\n", encoding="utf-8")
+                    result = subprocess.run([runner, str(generate_file(source)), "--check-examples"], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_text_steps_compose_in_python_and_javascript(self):
+        cases = (
+            ("Convert the text to uppercase and then count the vowels.", {"text": "Education"}, 5),
+            ("Remove the spaces and reverse the string.", {"text": "a bc"}, "cba"),
+            ("Count the words in the text after removing the vowels.", {"text": "an apple"}, 2),
+            ("Find the longest word after converting the text to lowercase.", {"text": "Hello Big"}, "hello"),
         )
         for request, given, expected in cases:
             for target, runner in (("python", sys.executable), ("javascript", "node")):

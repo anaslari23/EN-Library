@@ -425,6 +425,7 @@ _ACTION = re.compile(  # things a generated function cannot do; naming one means
     r"\b(?:e ?mail|send|save|upload|download|plot|draw|chart|graph|translate|tweet|notify|message|boss|files?"
     r"|colou?r|red|green|blue|speak|open|delete)\b"
 )
+_LIST_WORD = re.compile(r"\b(?:list|array|numbers|integers)\b")
 _MINUS = re.compile(r"(?<![\w])-(?=\d)")
 _NUMBER_WORD = r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)"
 _CONDITION = re.compile(
@@ -438,6 +439,8 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
     """Recognize a supported intent, refusing instead of quietly dropping part of the request."""
     text = _normalize(prompt.text)
     spec = _recognize(prompt, filename)
+    if all(item.kind == "string" for item in spec.inputs) and not spec.stages and _LIST_WORD.search(text):
+        _error(prompt, filename, f"'{spec.function_name.replace('_', ' ')}' works on a text, but this mentions a list or numbers; say which input you mean", "ambiguous")
     action = _ACTION.search(text)
     if action:
         _error(prompt, filename, f"I can only write the function itself; I can't '{action.group()}' for you", "unsupported")

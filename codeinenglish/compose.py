@@ -9,6 +9,7 @@ import re
 from .recipes import BY_KEY, PARAM_STEPS, parameter, parametric_step
 
 _PLURAL_LIST_NOUN = re.compile(r"\b(?:list|array|numbers|integers|values|elements|items|sequence)\b")
+_TEXT_NOUN = re.compile(r"\b(?:text|string|strings|sentence|words?|characters?|letters?|phrase)\b")
 _LIST_NOUN = re.compile(r"\b(?:list|array|numbers?|integers?|values?|elements?|items?|sequence)\b")
 _CONJUNCTION = re.compile(r"\b(?:and|then|afterwards|followed by|after that)\b")
 _PHRASES = (  # fixed phrasings rewritten before scanning, so their words are not read as separate stages
@@ -17,7 +18,7 @@ _PHRASES = (  # fixed phrasings rewritten before scanning, so their words are no
 )
 _STOP = set("""list array numbers integers values elements items given each every find calculate compute return write
 program that from then after those them with into what which whole please also just give take make tell show result
-output sequence collection this these there where have does here afterwards followed number only keep retain select filter pick extract""".split())
+output sequence collection this these there where have does here afterwards followed number only keep retain select filter pick extract convert converting change changing turning transform version applying apply using string text sentence phrase left remaining once still""".split())
 _MEANINGFUL_SMALL = re.compile(r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b")
 
 
@@ -31,22 +32,27 @@ def strip_parameters(text: str) -> str:
     return text
 
 
-def _stages():
-    return [(key, re.compile(recipe.stage[0]), recipe.stage[1]) for key, recipe in BY_KEY.items() if recipe.stage and recipe.stage[0]]
+def _stages(domain: str):
+    """Steps for one kind of input: a list of integers or a text."""
+    wanted = "string" if domain == "text" else "integer_list"
+    return [(key, re.compile(recipe.stage[0]), recipe.stage[1]) for key, recipe in BY_KEY.items()
+            if recipe.stage and recipe.stage[0] and len(recipe.inputs) == 1 and recipe.inputs[0][1] == wanted]
 
 
 def analyze(text: str) -> tuple[list[str] | None, int]:
     """(recipe keys in application order or None, number of distinct steps found).
 
     A step count of 2+ with no order means the request names several steps that could not be combined."""
-    if not _LIST_NOUN.search(text):
+    in_list, in_text = bool(_LIST_NOUN.search(text)), bool(_TEXT_NOUN.search(text))
+    if in_list == in_text:  # neither (nothing to compose) or both (which input is meant?)
         return None, 0
+    domain = "list" if in_list else "text"
     for pattern, replacement in _PHRASES:
         text = pattern.sub(replacement, text)
     found = []
-    for key, pattern, out in _stages():
+    for key, pattern, out in _stages(domain):
         found += [(match.start(), match.end(), key, out) for match in pattern.finditer(text)]
-    for base, regex, *_ in PARAM_STEPS:
+    for base, regex, *_ in PARAM_STEPS if domain == "list" else ():
         found += [(match.start(), match.end(), parametric_step(base, parameter(match)), "list") for match in re.finditer(regex, text)]
     found.sort(key=lambda item: (item[0], -(item[1] - item[0])))
     mentions, end = [], -1
@@ -95,8 +101,8 @@ def analyze(text: str) -> tuple[list[str] | None, int]:
         for later in after[ready[0]]:
             waiting[later] -= 1
     outs = [mentions[index][3] for index in order]
-    if any(out != "list" for out in outs[:-1]):
-        return None, count  # a single value cannot be fed into another list stage
+    if any(out == "scalar" for out in outs[:-1]):
+        return None, count  # a single value cannot be fed into another step
     return [mentions[index][2] for index in order], count
 
 

@@ -285,11 +285,17 @@ RECIPES = (
            ("Count every entry, including repeats.",),
            "def count_items(nums):\n    return len(nums)\n",
            rejects=(r"\b(?:even|odd|positive|negative|unique|distinct|duplicates?|vowels?|words?|characters?|letters?|digits?|primes?|target|times|occurrences?|appears?|each|every)\b",)),
+
+    Recipe("count_characters", "count_characters", _TEXT, "integer",
+           (r"\b(?:length|number of characters|how many characters|count the characters)\b", r"\b(?:text|string|sentence|word|phrase)\b"),
+           ("Every character counts, including spaces and punctuation.",),
+           "def count_characters(text):\n    return len(text)\n",
+           rejects=(r"\b(?:unique|distinct|vowels?|words|longest|upper ?case)\b",)),
 )
 
-def _code(key, function, source):
+def _code(key, function, source, inputs=_NUMS):
     """A family whose wording is recognized by hand-tuned rules in problem_recognizer; only its code lives here."""
-    return Recipe(key, function, (), "", (), (), source)
+    return Recipe(key, function, inputs, "", (), (), source)
 
 
 # ponytail: frequencies, palindrome, anagram, first_unique_character, balanced_delimiters, two_sum stay hand-built
@@ -301,7 +307,7 @@ CODE_ONLY = (
     _code("maximum", "find_maximum", "def find_maximum(nums):\n    if not nums:\n        return None\n    return max(nums)\n"),
     _code("sum", "calculate_sum", "def calculate_sum(nums):\n    return sum(nums)\n"),
     _code("sort_ascending", "sort_ascending", "def sort_ascending(nums):\n    return sorted(nums)\n"),
-    _code("reverse_text", "reverse_text", "def reverse_text(text):\n    return ''.join(reversed(text))\n"),
+    _code("reverse_text", "reverse_text", "def reverse_text(text):\n    return ''.join(reversed(text))\n", _TEXT),
     _code("move_zeros", "move_zeros",
           "def move_zeros(nums):\n    result = []\n    zeros = 0\n    for number in nums:\n        if number != 0:\n            result.append(number)\n        else:\n            zeros += 1\n    for _ in range(zeros):\n        result.append(0)\n    return result\n"),
     _code("merge_sorted_lists", "merge_sorted_lists",
@@ -323,7 +329,21 @@ STAGES = {  # key -> (regex naming the step in a request, "list" if it yields a 
     "sort_descending": (r"\bdescending(?: order)?\b", "list"),
     "sum": (r"\b(?:sum|total|add(?: them| these)?(?: all)? up|add up)\b", "scalar"),
     "product": (r"\b(?:product|multiply)\b", "scalar"), "average": (r"\b(?:average|mean)\b", "scalar"),
-    "median": (r"\bmedian\b", "scalar"), "count_items": (r"\b(?:count|how many|number of)\b", "scalar"),
+    "median": (r"\bmedian\b", "scalar"),
+    # text steps (their input is a string, so they only compose with each other)
+    "to_uppercase": (r"\b(?:upper ?case|capital letters|all caps)\b", "text"),
+    "to_lowercase": (r"\b(?:lower ?case|small letters)\b", "text"),
+    "remove_spaces": (r"\b(?:remov(?:e|ing)|delet(?:e|ing)|strip(?:ping)?|eliminat(?:e|ing))\b[^.]{0,12}?\b(?:spaces?|whitespace)\b|\b(?:spaces?|whitespace)(?: (?:are|is|were|being))? (?:removed|deleted|stripped|eliminated)\b", "text"),
+    "remove_vowels": (r"\b(?:remov(?:e|ing)|delet(?:e|ing)|strip(?:ping)?|eliminat(?:e|ing)|dropp?(?:ing)?)\b[^.]{0,12}?\bvowels?\b|\bvowels?(?: (?:are|is|were|being))? (?:removed|deleted|stripped|eliminated)\b", "text"),
+    "swap_case": (r"\b(?:swap(?:ping)?|invert(?:ing)?|toggl(?:e|ing)|flip(?:ping)?)\b[^.]{0,12}?\bcase\b", "text"),
+    "reverse_text": (r"\b(?:revers\w*|backwards?)\b", "text"),
+    "count_vowels": (r"\b(?:count|how many|number of)\b[^.]{0,25}?\bvowels?\b", "scalar"),
+    "count_words": (r"\b(?:count|how many|number of)\b[^.]{0,25}?\bwords\b", "scalar"),
+    "count_uppercase": (r"\b(?:count|how many|number of)\b[^.]{0,25}?\b(?:upper ?case|capital)\b", "scalar"),
+    "count_unique_characters": (r"\b(?:count|how many|number of)\b[^.]{0,25}?\b(?:unique|distinct)\b[^.]{0,15}?\b(?:characters?|letters?)\b", "scalar"),
+    "count_characters": (r"\b(?:length|number of characters|how many characters)\b", "scalar"),
+    "longest_word": (r"\blongest word\b", "scalar"),
+    "pangram": (r"\bpangram\b", "scalar"), "count_items": (r"\b(?:count|how many|number of)\b", "scalar"),
     "maximum": (r"\b(?:maximum|largest|biggest|greatest|max)\b", "scalar"),
     "minimum": (r"\b(?:minimum|smallest|least|min)\b", "scalar"),
 }
