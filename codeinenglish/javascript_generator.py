@@ -1,5 +1,8 @@
 """JavaScript backend entry point: whole programs (js_program.py) and problem recipes (transpile_js.py)."""
 
+from __future__ import annotations
+
+
 from .errors import CodeInEnglishError
 from .ir import Program
 from .problem_recognizer import ProblemSpec

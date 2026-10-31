@@ -1,4 +1,7 @@
 """Transpile the small Python subset used by recipes into JavaScript."""
+
+from __future__ import annotations
+
 import ast
 import json
 

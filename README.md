@@ -52,7 +52,7 @@ Internally, English instructions become a typed `Program`; comment requests beco
 
 ## Development
 
-The distribution has no runtime dependencies and supports Python 3.10+. Run its self-contained tests with:
+The distribution has no runtime dependencies and supports Python 3.9+ (the Python that ships with macOS). Run its self-contained tests with:
 
 ```sh
 python3 -m unittest discover -s tests -v
@@ -63,3 +63,16 @@ Test fixtures live in `tests/fixtures/`; the package suite does not need the sep
 ## Finding wordings to support
 
 Logging is off by default and never leaves your machine. To record requests that could not be generated, set `CODEINENGLISH_MISSES` to a file path, use the tool as usual, then run `python -m codeinenglish misses` to list each distinct request with its count, most frequent first. Frequent misses are the next recipes or wordings to add.
+
+## Run it with nothing installed
+
+No `pip`, no editor extension: build one file and copy it anywhere that has Python 3.9 or newer (the Python that ships with macOS is enough).
+
+```sh
+python3 scripts/build_zipapp.py        # writes dist/en.pyz (about 70 KB)
+python3 dist/en.pyz run program.en     # or: ./dist/en.pyz run program.en
+python3 dist/en.pyz generate program.en
+```
+
+Scripts can use `import codeinenglish` with `PYTHONPATH=dist/en.pyz`. The VS Code extension is only a convenience: it adds a Run button over these same commands.
+

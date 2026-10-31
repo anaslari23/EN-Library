@@ -1,5 +1,8 @@
 """The single source of truth for the structure and directives of an .en file."""
 
+from __future__ import annotations
+
+
 from dataclasses import dataclass
 import re
 

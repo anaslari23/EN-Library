@@ -1,9 +1,9 @@
+from __future__ import annotations
 import re
 import sys
 from pathlib import Path
 
 _TRIGGER = re.compile(r"^\s*#\s*write a program to\b", re.IGNORECASE)
-_PACKAGE_DIR = str(Path(__file__).resolve().parent)
 
 
 def comment_requests(source: str) -> list[str]:
@@ -39,8 +39,8 @@ def generate_from_comments(source: str, namespace: dict, filename: str = "<strin
 def _on_import() -> None:
     """Act on `# write a program to ...` comments in the file that first imports codeinenglish."""
     frame = sys._getframe(1)
-    while frame and (frame.f_code.co_filename.startswith("<frozen importlib")
-                     or frame.f_code.co_filename.startswith(_PACKAGE_DIR)):
+    while frame and (frame.f_code.co_filename.startswith("<frozen")
+                     or frame.f_globals.get("__name__", "").split(".")[0] == __package__):  # by name: paths can differ (symlinks, zips)
         frame = frame.f_back
     path = frame.f_globals.get("__file__") if frame else None
     if not isinstance(path, str) or not path.endswith(".py"):

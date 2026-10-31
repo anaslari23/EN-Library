@@ -1,4 +1,7 @@
 """JavaScript backend for whole instruction programs: classes, lists, loops, conditions, input and output."""
+
+from __future__ import annotations
+
 import json
 
 from .errors import CodeInEnglishError

@@ -1,4 +1,7 @@
 """Opt-in local log of requests that could not be turned into code, to learn which wordings to support."""
+
+from __future__ import annotations
+
 import json
 import os
 from collections import Counter

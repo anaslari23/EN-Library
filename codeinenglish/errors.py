@@ -1,3 +1,4 @@
+from __future__ import annotations
 class CodeInEnglishError(Exception):
     """A syntax error in a Code in English source file."""
 

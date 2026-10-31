@@ -4,6 +4,9 @@ Values are dynamic (`Object`) and the `En` runtime class reproduces Python's beh
 the same approach as the JavaScript backend. EN classes become Java classes; every user method is `m_NAME` so it
 can never collide with a Java keyword or an `Object` method. Run with `java File.java` (JDK 11+).
 """
+
+from __future__ import annotations
+
 import json
 
 from .errors import CodeInEnglishError

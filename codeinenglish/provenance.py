@@ -1,5 +1,8 @@
 """Deterministic metadata embedded in generated source files."""
 
+from __future__ import annotations
+
+
 from pathlib import Path
 
 TOOL_VERSION = "0.3.0"

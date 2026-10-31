@@ -1,3 +1,4 @@
+from __future__ import annotations
 import ast
 
 from .problem_recognizer import ProblemFamily, ProblemSpec

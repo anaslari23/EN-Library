@@ -1,4 +1,7 @@
 """Table-driven problem recipes. To add one: append a Recipe below; no other file changes."""
+
+from __future__ import annotations
+
 import ast
 import difflib
 import re

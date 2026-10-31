@@ -28,7 +28,7 @@ def _metadata() -> bytes:
         "Classifier: License :: OSI Approved :: MIT License\n"
         "Classifier: Programming Language :: Python :: 3\n"
         "Classifier: Topic :: Software Development :: Code Generators\n"
-        "Requires-Python: >=3.10\n"
+        "Requires-Python: >=3.9\n"
         "Description-Content-Type: text/markdown\n\n"
         + readme
     ).encode()

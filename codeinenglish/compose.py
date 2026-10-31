@@ -4,6 +4,9 @@ Each recipe with a `stage` is a building block. The request is scanned for block
 structure, type-checked (only the last block may produce a single value), and refused if any meaningful
 word is left unexplained, so it never quietly drops part of what was asked.
 """
+
+from __future__ import annotations
+
 import re
 
 from .recipes import BY_KEY, PARAM_STEPS, parameter, parametric_step

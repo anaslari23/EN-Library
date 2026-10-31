@@ -1,5 +1,8 @@
 """Conservative, body-verified migration for versioned EN source files."""
 
+from __future__ import annotations
+
+
 import difflib
 from pathlib import Path
 import re

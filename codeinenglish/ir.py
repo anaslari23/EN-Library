@@ -1,5 +1,6 @@
+from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import TypeAlias
+from typing import Union
 
 
 @dataclass(frozen=True)
@@ -51,7 +52,7 @@ class MethodCall:
     arguments: list["Expr"]
 
 
-Expr: TypeAlias = Literal | Name | Binary | Compare | Index | Contains | Attribute | MethodCall
+Expr = Union[Literal, Name, Binary, Compare, Index, Contains, Attribute, MethodCall]
 
 
 @dataclass(frozen=True)
@@ -141,7 +142,7 @@ class Return:
     value: Expr
 
 
-Statement: TypeAlias = Assign | ReadInput | Display | If | CreateList | CreateDictionary | Append | SetItem | ForEach | ClassDef | MethodDef | CreateInstance | SetAttribute | Return | MethodCall
+Statement = Union[Assign, ReadInput, Display, If, CreateList, CreateDictionary, Append, SetItem, ForEach, ClassDef, MethodDef, CreateInstance, SetAttribute, Return, MethodCall]
 
 
 @dataclass(frozen=True)

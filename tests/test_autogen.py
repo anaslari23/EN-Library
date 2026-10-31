@@ -22,6 +22,17 @@ class ImportGenerationTests(unittest.TestCase):
         result = run_script(SCRIPT)
         self.assertEqual((result.returncode, result.stdout.strip()), (0, "(0, 1)"), result.stderr)
 
+    def test_import_generation_works_from_a_zip_file_with_no_install(self):
+        import subprocess as sp
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / "en.pyz"
+            sp.run([sys.executable, str(ROOT / "scripts" / "build_zipapp.py")], check=True, capture_output=True)
+            archive.write_bytes((ROOT / "dist" / "en.pyz").read_bytes())
+            script = Path(directory) / "s.py"
+            script.write_text("import codeinenglish\n# write a program to find the median of a list of numbers\nprint(find_median([4, 1, 3, 2]))\n")
+            result = sp.run([sys.executable, str(script)], capture_output=True, text=True, env={"PYTHONPATH": str(archive), "PATH": ""}, cwd=directory)
+            self.assertEqual((result.returncode, result.stdout.strip()), (0, "2.5"), result.stderr)
+
     def test_import_without_trigger_comment_does_nothing(self):
         result = run_script("import codeinenglish\nprint('plain')\n")
         self.assertEqual((result.returncode, result.stdout.strip()), (0, "plain"), result.stderr)

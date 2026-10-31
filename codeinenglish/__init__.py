@@ -1,3 +1,9 @@
+from __future__ import annotations
+
+import sys
+
+if sys.version_info < (3, 9):  # shown instead of an obscure syntax error on very old Pythons
+    raise SystemExit("EN needs Python 3.9 or newer. Install one from https://www.python.org/downloads/ and run this again.")
 from .errors import CodeInEnglishError
 from .translator import translate, translate_file
 from .problem_solver import solve, solve_file
