@@ -20,10 +20,17 @@ class MetamorphicTests(unittest.TestCase):
             with self.subTest(key):
                 self.assertEqual(result("Please " + request[0].lower() + request[1:].rstrip(".") + ", thanks.", given), result(request, given))
 
-    def test_an_added_condition_is_refused_never_dropped(self):
+    def test_an_added_condition_is_applied_or_refused_never_dropped(self):
         for key, (request, given, expected) in {**CASES, **MIGRATED}.items():
-            with self.subTest(key), self.assertRaises(Exception):
-                result(request.rstrip(".") + " but only for values greater than 3.", given)
+            with self.subTest(key):
+                try:
+                    got = result(request.rstrip(".") + " but only for values greater than 3.", given)
+                except Exception:
+                    continue  # refusing is always acceptable
+                # accepted means the condition was applied: same as the base task on the filtered list
+                self.assertEqual(list(given), ["nums"], "a task without a list cannot apply a list condition")
+                kept = {"nums": [value for value in given["nums"] if value > 3]}
+                self.assertEqual(got, result(request, kept))
 
     def test_an_extra_clause_is_refused_never_dropped(self):
         for key, (request, given, expected) in {**CASES, **MIGRATED}.items():

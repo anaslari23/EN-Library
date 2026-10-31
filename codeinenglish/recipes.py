@@ -418,3 +418,45 @@ def foreign_tasks(text: str, spec_key: str) -> list[str]:
         if key != spec_key and match and match.group() not in own_text and not re.search(regex, own_text):
             found.append(key.replace("_", " "))
     return sorted(found)
+
+
+# --- steps whose number comes from the request ("greater than 5", "first three") ---
+_NUMBER_WORDS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+_VALUE = r"(minus ?)?(\d+|" + "|".join(_NUMBER_WORDS) + r")"
+_FILTER = "def {name}(nums):\n    return [number for number in nums if {test}]\n"
+PARAM_STEPS = (  # (base name, regex with the number in groups 1-2, source template, assumption)
+    ("filter_greater_than", r"\b(?:greater|larger|bigger|more|higher) than " + _VALUE + r"\b|\babove " + _VALUE + r"\b", _FILTER, "Keep values strictly greater than {n}.", "number > {n}"),
+    ("filter_less_than", r"\b(?:less|smaller|fewer|lower) than " + _VALUE + r"\b|\bbelow " + _VALUE + r"\b", _FILTER, "Keep values strictly less than {n}.", "number < {n}"),
+    ("filter_at_least", r"\bat least " + _VALUE + r"\b", _FILTER, "Keep values greater than or equal to {n}.", "number >= {n}"),
+    ("filter_at_most", r"\bat most " + _VALUE + r"\b", _FILTER, "Keep values less than or equal to {n}.", "number <= {n}"),
+    ("filter_divisible_by", r"\b(?:divisible by|multiples? of) " + _VALUE + r"\b", _FILTER, "Keep values divisible by {n}.", "number % {n} == 0"),
+    ("take_first", r"\bfirst " + _VALUE + r"\b",
+     "def {name}(nums):\n    result = []\n    for number in nums:\n        if len(result) < {n}:\n            result.append(number)\n    return result\n",
+     "Keep the first {n} values (fewer if the list is shorter).", None),
+    ("take_last", r"\blast " + _VALUE + r"\b",
+     "def {name}(nums):\n    result = []\n    start = len(nums) - {n}\n    for index in range(len(nums)):\n        if index >= start:\n            result.append(nums[index])\n    return result\n",
+     "Keep the last {n} values (fewer if the list is shorter).", None),
+)
+
+
+class _Family(str):
+    """Stands in for an enum member for steps built on the fly."""
+    value = property(lambda self: str(self))
+
+
+def parameter(match) -> int:
+    """The signed number captured by a PARAM_STEPS regex match."""
+    groups = [group for group in match.groups() if group is not None]
+    sign = -1 if groups[0].startswith("minus") else 1
+    word = groups[-1]
+    return sign * (_NUMBER_WORDS[word] if word in _NUMBER_WORDS else int(word))
+
+
+def parametric_step(base: str, n: int) -> str:
+    """Register (once) the step `base` with the number `n` and return its key."""
+    key = f"{base}_{'minus_' if n < 0 else ''}{abs(n)}"
+    if key not in BY_KEY:
+        _, _, template, note, test = next(step for step in PARAM_STEPS if step[0] == base)
+        source = template.format(name=key, n=n, test=(test or "").format(n=n))
+        BY_KEY[key] = Recipe(key, key, _NUMS, "integer_list", (), (note.format(n=n),), source, stage=("", "list"))
+    return key

@@ -6,8 +6,9 @@ word is left unexplained, so it never quietly drops part of what was asked.
 """
 import re
 
-from .recipes import BY_KEY
+from .recipes import BY_KEY, PARAM_STEPS, parameter, parametric_step
 
+_PLURAL_LIST_NOUN = re.compile(r"\b(?:list|array|numbers|integers|values|elements|items|sequence)\b")
 _LIST_NOUN = re.compile(r"\b(?:list|array|numbers?|integers?|values?|elements?|items?|sequence)\b")
 _CONJUNCTION = re.compile(r"\b(?:and|then|afterwards|followed by|after that)\b")
 _PHRASES = (  # fixed phrasings rewritten before scanning, so their words are not read as separate stages
@@ -16,12 +17,22 @@ _PHRASES = (  # fixed phrasings rewritten before scanning, so their words are no
 )
 _STOP = set("""list array numbers integers values elements items given each every find calculate compute return write
 program that from then after those them with into what which whole please also just give take make tell show result
-output sequence collection this these there where have does here afterwards followed number only""".split())
+output sequence collection this these there where have does here afterwards followed number only keep retain select filter pick extract""".split())
 _MEANINGFUL_SMALL = re.compile(r"\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b")
 
 
+STAGE_KEYS = {key for key, recipe in BY_KEY.items() if recipe.stage and recipe.stage[0]}
+
+
+def strip_parameters(text: str) -> str:
+    """The request with every "greater than 5"-style phrase removed (those are handled as steps)."""
+    for _, regex, *_ in PARAM_STEPS:
+        text = re.sub(regex, " ", text)
+    return text
+
+
 def _stages():
-    return [(key, re.compile(recipe.stage[0]), recipe.stage[1]) for key, recipe in BY_KEY.items() if recipe.stage]
+    return [(key, re.compile(recipe.stage[0]), recipe.stage[1]) for key, recipe in BY_KEY.items() if recipe.stage and recipe.stage[0]]
 
 
 def analyze(text: str) -> tuple[list[str] | None, int]:
@@ -35,6 +46,8 @@ def analyze(text: str) -> tuple[list[str] | None, int]:
     found = []
     for key, pattern, out in _stages():
         found += [(match.start(), match.end(), key, out) for match in pattern.finditer(text)]
+    for base, regex, *_ in PARAM_STEPS:
+        found += [(match.start(), match.end(), parametric_step(base, parameter(match)), "list") for match in re.finditer(regex, text)]
     found.sort(key=lambda item: (item[0], -(item[1] - item[0])))
     mentions, end = [], -1
     for item in found:  # longest-first, no overlaps
@@ -53,7 +66,8 @@ def analyze(text: str) -> tuple[list[str] | None, int]:
             unique.append(item)
     mentions = unique
     count = len(mentions)
-    if count < 2:
+    has_parameter = any(item[2] not in STAGE_KEYS for item in mentions)
+    if count < 2 and not (has_parameter and _PLURAL_LIST_NOUN.search(text)):  # one step alone needs a clear list
         return None, count
     if {"sort_ascending", "reverse_list"} <= {item[2] for item in mentions}:
         return None, count  # "sort and reverse" is ambiguous (descending order?); let the older rules ask
@@ -65,6 +79,11 @@ def analyze(text: str) -> tuple[list[str] | None, int]:
         gap = text[mentions[index][1]:mentions[index + 1][0]]
         first, second = (index, index + 1) if _CONJUNCTION.search(gap) else (index + 1, index)
         after[first].add(second)
+    for index, item in enumerate(mentions):
+        if item[3] == "scalar":
+            for other in range(len(mentions)):
+                if other != index:
+                    after[other].add(index)
     waiting = {index: sum(index in later for later in after.values()) for index in after}
     order = []
     while waiting:

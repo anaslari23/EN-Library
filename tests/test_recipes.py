@@ -100,6 +100,26 @@ class RecipeTests(unittest.TestCase):
                     result = subprocess.run([runner, str(generate_file(source)), "--check-examples"], capture_output=True, text=True)
                     self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_steps_with_a_number_from_the_request_run_in_python_and_javascript(self):
+        cases = (
+            ("Sum the numbers greater than 10 in the list.", {"nums": [5, 15, 20]}, 35),
+            ("Count the numbers less than 3.", {"nums": [1, 2, 3, 4]}, 2),
+            ("Return the first two numbers of the list.", {"nums": [4, 5, 6]}, [4, 5]),
+            ("Sum the last three numbers.", {"nums": [1, 2, 3, 4]}, 9),
+            ("Keep the numbers divisible by 3.", {"nums": [3, 4, 6]}, [3, 6]),
+            ("Count the numbers greater than -2.", {"nums": [-3, -1, 0]}, 2),
+            ("Find the largest number below 100 in the list.", {"nums": [5, 150, 99]}, 99),
+        )
+        for request, given, expected in cases:
+            for target, runner in (("python", sys.executable), ("javascript", "node")):
+                if runner == "node" and not shutil.which("node"):
+                    continue
+                with self.subTest(request=request, target=target), tempfile.TemporaryDirectory() as directory:
+                    source = Path(directory) / "p.en"
+                    source.write_text(f"target {target}\n# {request}\n# Example input: {json.dumps(given)}\n# Example output: {json.dumps(expected)}\n", encoding="utf-8")
+                    result = subprocess.run([runner, str(generate_file(source)), "--check-examples"], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_every_recipe_has_a_case(self):
         self.assertEqual(set(CASES), {recipe.key for recipe in RECIPES})
 

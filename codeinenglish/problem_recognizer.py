@@ -5,9 +5,9 @@ from typing import Literal
 
 from .errors import CodeInEnglishError
 from .problem_prompt import ProblemExample, ProblemPrompt
-from .compose import analyze as compose_analyze
+from .compose import analyze as compose_analyze, strip_parameters
 from .misses import record
-from .recipes import BY_KEY, RECIPES, STAGES, TABLE_KEYS, RecipeFamily, foreign_tasks, suggest, unexplained
+from .recipes import BY_KEY, RECIPES, STAGES, TABLE_KEYS, RecipeFamily, _Family, foreign_tasks, suggest, unexplained
 
 
 class ProblemFamily(str, Enum):
@@ -184,6 +184,11 @@ def _pipeline(prompt: ProblemPrompt, text: str, filename: str) -> tuple[ProblemS
 
 def _stage_spec(key: str, prompt: ProblemPrompt) -> ProblemSpec:
     """The one-step spec for a recipe or original family used as a stage of a composed request."""
+    if key not in TABLE_KEYS and key in BY_KEY and not BY_KEY[key].stage[0]:  # a step built from the request's own number
+        recipe = BY_KEY[key]
+        inputs = tuple(ProblemInput(name, kind) for name, kind in recipe.inputs)
+        assumptions = tuple(ProblemAssumption(note, "stated") for note in recipe.assumptions)
+        return ProblemSpec(_Family(key), inputs, recipe.result, frozenset(), (key,), assumptions, prompt.examples)
     recipe = next((item for item in RECIPES if item.key == key), None)
     if recipe:
         inputs = tuple(ProblemInput(name, kind) for name, kind in recipe.inputs)
@@ -199,7 +204,7 @@ def _recognize(prompt: ProblemPrompt, filename: str = "<string>") -> ProblemSpec
     if not text:
         _error(prompt, filename, "the problem statement is empty")
 
-    keys, _ = compose_analyze(text)
+    keys, _ = compose_analyze(_normalize(_MINUS.sub("minus", prompt.text)))
     if keys:
         stages = tuple(_stage_spec(key, prompt) for key in keys)
         assumptions = tuple(item for stage in stages for item in stage.assumptions)
@@ -420,6 +425,7 @@ _ACTION = re.compile(  # things a generated function cannot do; naming one means
     r"\b(?:e ?mail|send|save|upload|download|plot|draw|chart|graph|translate|tweet|notify|message|boss|files?"
     r"|colou?r|red|green|blue|speak|open|delete)\b"
 )
+_MINUS = re.compile(r"(?<![\w])-(?=\d)")
 _NUMBER_WORD = r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)"
 _CONDITION = re.compile(
     r"\b(?:(?:greater|less|more|fewer|larger|smaller|bigger|longer|shorter|higher|lower) than(?! once| twice)|above|below|between"
@@ -441,10 +447,11 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
     others = [] if spec.stages else foreign_tasks(text, spec.family.value)
     if others:
         _error(prompt, filename, f"This asks for '{spec.function_name.replace('_', ' ')}' but also mentions {', '.join(others)}; I can do one task per request (or steps joined with 'then')", "ambiguous")
-    condition = _CONDITION.search(text)
+    condition_text = _normalize(_MINUS.sub("minus", prompt.text))
     recipe = BY_KEY.get(spec.family.value)
-    if condition and (spec.stages or not (recipe and any(word in condition.group() for word in recipe.accepts))):
-        _error(prompt, filename, f"I can't apply the condition '{condition.group()}' yet, and running the plain task would give a wrong answer", "unsupported")
+    for condition in _CONDITION.finditer(strip_parameters(condition_text) if spec.stages else condition_text):  # composed steps apply theirs
+        if not (recipe and not spec.stages and any(word in condition.group() for word in recipe.accepts)):
+            _error(prompt, filename, f"I can't apply the condition '{condition.group()}' yet, and running the plain task would give a wrong answer", "unsupported")
     if not spec.stages and spec.family.value in STAGES and compose_analyze(text)[1] >= 2:
         _error(prompt, filename, "I found several steps in this request but could not order them; say them in order with 'then'", "ambiguous")
     return spec

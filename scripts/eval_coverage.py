@@ -50,7 +50,13 @@ CASES = [
     # must be refused, never answered with the wrong program
     ("Send an email to my boss.", None, None),
     ("Compose a symphony.", None, None),
-    ("Find the sum of the numbers greater than 10 in the list.", None, None),
+    ("Find the sum of the numbers greater than 10 in the list.", {N: [5, 15, 20]}, 35),
+    ("Count the numbers less than 3.", {N: [1, 2, 3, 4]}, 2),
+    ("Return the first two numbers of the list.", {N: [4, 5, 6]}, [4, 5]),
+    ("Keep the numbers divisible by 3.", {N: [3, 4, 6]}, [3, 6]),
+    ("Sum the last two numbers.", {N: [1, 2, 3, 4]}, 7),
+    ("Count the numbers greater than -2.", {N: [-3, -1, 0]}, 2),
+    ("Sum the numbers greater than five and less than ten.", {N: [3, 6, 9, 12]}, 15),
     ("Count the vowels in the string and print them in red.", None, None),
     ("Sort the list by the length of each item.", None, None),
 ]
@@ -59,10 +65,14 @@ CASES = [
 # Adversarial set, written after the matcher was built and not used to tune it.
 TRAPS = [
     # a condition the tool cannot apply: running the plain task would be a silent wrong answer
-    ("Sum the numbers greater than 5 in the list.", None, None),
-    ("Sum the first three numbers of the list.", None, None),
+    ("Sum the numbers greater than 5 in the list.", {N: [1, 6, 7]}, 13),
+    ("Sum the first three numbers of the list.", {N: [1, 2, 3, 4]}, 6),
     ("Count the vowels and the consonants in the string.", None, None),
-    ("Find the largest number below 100 in the list.", None, None),
+    ("Find the largest number below 100 in the list.", {N: [5, 150, 99]}, 99),
+    ("Sum the numbers greater than ten percent.", None, None),
+    ("Sum the numbers greater than the average.", None, None),
+    ("Return the numbers between 3 and 8.", None, None),
+    ("Return the first three numbers sorted by value.", None, None),
     ("Return the even numbers sorted by their square.", None, None),
     ("Find the sum of the list but skip negative numbers.", None, None),
     ("Is the number divisible by 3?", None, None),

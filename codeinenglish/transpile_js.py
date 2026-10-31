@@ -183,7 +183,7 @@ def recipe_javascript(spec, filename: str) -> str:
     except CodeInEnglishError as error:
         raise CodeInEnglishError(filename, 1, error.message, kind="unsupported") from error
     name, function = spec.function_name, "\n".join(functions.values())
-    if spec.stages:
+    if len(spec.stages) > 1:
         chained = _name(spec.inputs[0].name)
         for stage in stages:
             chained = f"{stage.function_name}({chained})"

@@ -144,6 +144,8 @@ def _functions(spec):
     """The stage functions, then the function the runner calls (a pipeline composes its stages)."""
     if not spec.stages:
         return [_strategy(spec)]
+    if len(spec.stages) == 1:  # a single step needs no wrapper around itself
+        return [_strategy(spec.stages[0])]
     stages = {}
     for stage in spec.stages:
         stages.setdefault(stage.function_name, _strategy(stage))
