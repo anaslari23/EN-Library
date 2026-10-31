@@ -361,7 +361,7 @@ def function_ast(recipe: Recipe) -> ast.FunctionDef:
 
 def suggest(text: str, limit: int = 2) -> list[str]:
     """Names of the recipes whose name and key words best overlap the (normalized) request, tolerating typos."""
-    tokens = {word for word in text.split() if len(word) > 3}
+    tokens = {word for word in text.split() if len(word) > 3 and _stem(word) not in {_stem(g) for g in _GENERIC}}  # "text" or "numbers" say nothing about the task
     scored = []
     for recipe in RECIPES:
         name_words = set(recipe.key.split("_"))
@@ -371,7 +371,7 @@ def suggest(text: str, limit: int = 2) -> list[str]:
         if score:
             scored.append((-score, recipe.key))
     scored.sort()
-    return [key.replace("_", " ") for score, key in scored[:limit] if -score * 2 >= -scored[0][0]]
+    return [key.replace("_", " ") for score, key in scored[:limit] if -score >= 3 and -score * 2 >= -scored[0][0]]  # a real match on a task's name
 
 
 _GENERIC = set("""number numbers list array text string word words character characters given each every find calculate
