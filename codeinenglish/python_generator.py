@@ -76,8 +76,12 @@ def _expression(node: Expr) -> ast.expr:
     if isinstance(node, Attribute):
         return ast.Attribute(value=_expression(node.value), attr=node.name, ctx=ast.Load())
     if isinstance(node, MethodCall):
+        if node.value == Name("super"):
+            receiver, name = _call("super", []), "__init__" if node.name == "init" else node.name
+        else:
+            receiver, name = _expression(node.value), node.name
         return ast.Call(
-            func=ast.Attribute(value=_expression(node.value), attr=node.name, ctx=ast.Load()),
+            func=ast.Attribute(value=receiver, attr=name, ctx=ast.Load()),
             args=[_expression(argument) for argument in node.arguments],
             keywords=[],
         )
@@ -191,11 +195,11 @@ def _statements(nodes: list[Statement]) -> list[ast.stmt]:
                     body=_statements(method.body) or [ast.Pass()],
                     decorator_list=[],
                 ))
-            result.append(ast.ClassDef(name=node.name, bases=[], keywords=[], body=methods or [ast.Pass()], decorator_list=[]))
+            result.append(ast.ClassDef(name=node.name, bases=[ast.Name(id=node.parent, ctx=ast.Load())] if node.parent else [], keywords=[], body=methods or [ast.Pass()], decorator_list=[]))
         elif isinstance(node, CreateInstance):
             result.append(ast.Assign(
                 targets=[ast.Name(id=node.name, ctx=ast.Store())],
-                value=_call(node.class_name, []),
+                value=_call(node.class_name, [_expression(argument) for argument in node.arguments]),
             ))
         elif isinstance(node, SetAttribute):
             result.append(ast.Assign(

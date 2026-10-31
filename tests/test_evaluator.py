@@ -38,6 +38,27 @@ class EvaluatorTests(unittest.TestCase):
     def test_classes_fields_and_methods(self):
         self.assertEqual(interpreted((EXAMPLES / "greeter.en").read_text()), ["Hello Ada"])
 
+    def test_constructor_inheritance_and_super(self):
+        source = (EXAMPLES / "animals.en").read_text()
+        self.assertEqual(interpreted(source), ["Rex makes a sound and barks", 3])
+
+    def test_objects_in_a_list_can_be_looped_over(self):
+        source = (EXAMPLES / "bank_account.en").read_text().split("make an Account")[0] + (
+            'make an empty list called accounts\nmake an Account called a with "A" and 1\nmake an Account called b with "B" and 2\n'
+            "add a to accounts\nadd b to accounts\nfor each item in accounts\ncall item.deposit with 10\nend for\n"
+            "set x to call a.current\nset y to call b.current\nshow x and \" \" and y\n")
+        self.assertEqual(interpreted(source), ["11 12"])
+
+    def test_class_errors_are_diagnostics(self):
+        base = "define a class called A\ndefine a constructor with parameter x\nset self.x to x\nend constructor\nend class\n"
+        for source, message in ((base + "make an A called a\n", "constructor takes 1"),
+                                ("define a class called B\nend class\nmake a B called b with 1\n", "no constructor"),
+                                ("define a class called C that extends Nope\nend class\n", "unknown parent"),
+                                ("define a class called D\ndefine a method called m\ncall super.m\nend method\nend class\n", "super"),
+                                (base.replace("end class", "define a constructor\nend constructor\nend class"), "only one constructor")):
+            with self.subTest(message), self.assertRaisesRegex(Exception, message):
+                interpreted(source)
+
     def test_runtime_error_is_a_diagnostic(self):
         with self.assertRaises(Exception) as caught:
             interpreted("set x to 1 divided by 0\n")

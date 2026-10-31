@@ -16,9 +16,29 @@ class _Return(Exception):
         self.value = value
 
 
+class _Class:
+    def __init__(self, name, methods, parent):
+        self.name, self.methods, self.parent = name, methods, parent
+
+    def find(self, name):
+        """The (defining class, method) pair, searching this class then its parents."""
+        cls = self
+        while cls:
+            if name in cls.methods:
+                return cls, cls.methods[name]
+            cls = cls.parent
+        return None, None
+
+
 class _Instance:
     def __init__(self, cls):
         self._cls = cls
+
+
+class _Super:
+    """What `super` means inside a method: the instance, looked up from the parent class."""
+    def __init__(self, instance, parent):
+        self.instance, self.parent = instance, parent
 
 
 def run(program: Program, read=input, write=print, filename: str = "<string>") -> None:
@@ -50,18 +70,28 @@ def run(program: Program, read=input, write=print, filename: str = "<string>") -
         if isinstance(node, MethodCall):
             target = expr(node.value, scope)
             args = [expr(argument, scope) for argument in node.arguments]
-            if isinstance(target, _Instance):
-                method = target._cls.get(node.name)
-                if method is None:
-                    fail(f"no method '{node.name}'")
-                frame = dict(zip(method.parameters, args), self=target)
-                try:
-                    block(method.body, frame)
-                except _Return as result:
-                    return result.value
-                return None
+            if isinstance(target, (_Instance, _Super)):
+                return invoke(target, node.name, args)
             return guard(lambda: getattr(target, node.name)(*args))
         fail(f"unsupported expression {type(node).__name__}")
+
+    def invoke(target, name, args):
+        instance, start = (target.instance, target.parent) if isinstance(target, _Super) else (target, target._cls)
+        if isinstance(target, _Super) and name == "init":
+            name = "__init__"
+        owner, method = start.find(name) if start else (None, None)
+        if method is None:
+            fail(f"no method '{name}'")
+        if len(args) != len(method.parameters):
+            fail(f"{'the constructor' if name == '__init__' else repr(name)} takes {len(method.parameters)} value(s) but got {len(args)}")
+        frame = dict(zip(method.parameters, args), self=instance)
+        if owner.parent:
+            frame["super"] = _Super(instance, owner.parent)
+        try:
+            block(method.body, frame)
+        except _Return as result:
+            return result.value
+        return None
 
     def guard(operation):
         try:
@@ -95,9 +125,15 @@ def run(program: Program, read=input, write=print, filename: str = "<string>") -
                     scope[node.name] = item
                     block(node.body, scope)
             elif isinstance(node, ClassDef):
-                scope[node.name] = {method.name: method for method in node.methods}
+                scope[node.name] = _Class(node.name, {method.name: method for method in node.methods}, scope.get(node.parent))
             elif isinstance(node, CreateInstance):
-                scope[node.name] = _Instance(scope[node.class_name])
+                instance = _Instance(scope[node.class_name])
+                arguments = [expr(argument, scope) for argument in node.arguments]
+                if instance._cls.find("__init__")[1] is not None:
+                    invoke(instance, "__init__", arguments)
+                elif arguments:
+                    fail(f"'{node.class_name}' has no constructor, so it takes no values")
+                scope[node.name] = instance
             elif isinstance(node, SetAttribute):
                 setattr(expr(node.value, scope), node.name, expr(node.expression, scope))
             elif isinstance(node, Return):

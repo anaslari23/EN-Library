@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TypeAlias
 
 
@@ -119,12 +119,14 @@ class MethodDef:
 class ClassDef:
     name: str
     methods: list[MethodDef]
+    parent: str | None = None
 
 
 @dataclass(frozen=True)
 class CreateInstance:
     class_name: str
     name: str
+    arguments: list["Expr"] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

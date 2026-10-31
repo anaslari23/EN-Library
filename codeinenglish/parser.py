@@ -2,7 +2,7 @@ import keyword
 import re
 
 from .errors import CodeInEnglishError
-from .expressions import parse_expression
+from .expressions import _split_arguments, parse_expression
 from .ir import (
     Append,
     Attribute,
@@ -170,7 +170,7 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
             blocks[-1]["methods"].append(MethodDef(frame["name"], frame["parameters"], frame["body"]))
             return
         else:
-            statement = ClassDef(frame["name"], frame["methods"])
+            statement = ClassDef(frame["name"], frame["methods"], frame["parent"])
         append(statement)
 
     for line_number, original in enumerate(source.splitlines(), start=1):
@@ -194,36 +194,42 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
             })
             continue
 
-        class_match = re.fullmatch(r"define a class called ([A-Za-z_][A-Za-z0-9_]*)", line)
+        class_match = re.fullmatch(r"define a class called ([A-Za-z_][A-Za-z0-9_]*)(?: that extends ([A-Za-z_][A-Za-z0-9_]*))?", line)
         if class_match:
             if blocks:
                 raise CodeInEnglishError(filename, line_number, "class definitions must be top-level")
-            name = class_match.group(1)
+            name, parent = class_match.groups()
+            if parent is not None and parent not in classes:
+                raise CodeInEnglishError(filename, line_number, f"unknown parent class {parent!r}; define it first", kind="unknown_name")
             _check_name(name, filename, line_number)
             if name in classes or name in visible_names():
                 raise CodeInEnglishError(filename, line_number, f"{name!r} is already defined")
             classes.add(name)
-            blocks.append({"kind": "class", "name": name, "methods": [], "line": line_number})
+            blocks.append({"kind": "class", "name": name, "parent": parent, "methods": [], "line": line_number})
             continue
 
         method_match = re.fullmatch(
-            r"define a method called ([A-Za-z_][A-Za-z0-9_]*)(?: with parameters? (.+))?", line
+            r"define a (?:method called ([A-Za-z_][A-Za-z0-9_]*)|(constructor))(?: with parameters? (.+))?", line
         )
         if method_match:
             if not blocks or blocks[-1]["kind"] != "class":
                 raise CodeInEnglishError(filename, line_number, "methods must be defined inside a class")
-            name, raw_parameters = method_match.groups()
+            name, constructor, raw_parameters = method_match.groups()
+            if constructor:
+                name = "__init__"
+                if any(method.name == "__init__" for method in blocks[-1]["methods"]):
+                    raise CodeInEnglishError(filename, line_number, "a class can have only one constructor")
             _check_name(name, filename, line_number)
             parameters = re.split(r"\s+and\s+", raw_parameters) if raw_parameters else []
             for parameter in parameters:
                 _check_name(parameter, filename, line_number)
             if len(parameters) != len(set(parameters)):
                 raise CodeInEnglishError(filename, line_number, "method parameters must be unique")
-            loop_scopes.append({"self", *parameters})
+            loop_scopes.append({"self", *parameters, *(["super"] if blocks[-1]["parent"] else [])})
             blocks.append({"kind": "method", "name": name, "parameters": parameters, "body": [], "line": line_number})
             continue
 
-        if line == "end method":
+        if line in ("end method", "end constructor"):
             close_block("method", line_number)
             continue
         if line == "end class":
@@ -264,14 +270,17 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
             close_block("for", line_number)
             continue
 
-        instance_match = re.fullmatch(r"make a ([A-Za-z_][A-Za-z0-9_]*) called ([A-Za-z_][A-Za-z0-9_]*)", line)
+        instance_match = re.fullmatch(r"make an? ([A-Za-z_][A-Za-z0-9_]*) called ([A-Za-z_][A-Za-z0-9_]*)(?: with (.+))?", line)
         if instance_match:
-            class_name, name = instance_match.groups()
+            class_name, name, raw_arguments = instance_match.groups()
+            arguments = [parse_expression(part, filename=filename, line=line_number) for part in _split_arguments(raw_arguments)] if raw_arguments else []
+            for argument in arguments:
+                _validate_expression(argument, visible_names(), filename, line_number)
             if class_name not in classes:
                 raise CodeInEnglishError(filename, line_number, f"unknown class {class_name!r}", kind="unknown_name")
             _check_name(name, filename, line_number)
             define_name(name)
-            append(CreateInstance(class_name, name))
+            append(CreateInstance(class_name, name, arguments))
             continue
 
         attribute_assignment = re.fullmatch(r"set ([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*) to (.+)", line)
