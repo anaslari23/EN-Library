@@ -51,7 +51,7 @@ class JavaScriptBackendTests(unittest.TestCase):
     def test_unsupported_javascript_program_preserves_existing_output(self):
         with tempfile.TemporaryDirectory() as directory:
             en = Path(directory) / "program.en"
-            en.write_text('target javascript\nmake an empty list called numbers\n', encoding="utf-8")
+            en.write_text('target javascript\nset ratio to 1.5\n', encoding="utf-8")
             output = en.with_suffix(".js")
             output.write_text("old source", encoding="utf-8")
             with self.assertRaises(CodeInEnglishError) as caught:

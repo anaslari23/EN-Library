@@ -1,5 +1,6 @@
 import contextlib
 import io
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -85,3 +86,23 @@ class EvaluatorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(EXAMPLES.is_dir() and __import__("shutil").which("node"), "needs the examples folder and Node.js")
+class JavaScriptDifferentialTests(unittest.TestCase):
+    def test_javascript_output_matches_the_interpreter_on_instruction_examples(self):
+        import shutil
+        for path in sorted(EXAMPLES.glob("*.en")):
+            if "problem" in path.name or "javascript" in path.name or path.name.startswith("two_sum"):
+                continue
+            with self.subTest(path.name), tempfile.TemporaryDirectory() as directory:
+                source = path.read_text()
+                if "target python" in source:
+                    source = source.replace("target python", "target javascript")
+                else:
+                    source = "target javascript\n" + source
+                en = Path(directory) / "p.en"
+                en.write_text(source, encoding="utf-8")
+                result = subprocess.run([shutil.which("node"), str(generate_file(en))], input="Ada\nAda\nAda\n", capture_output=True, text=True)
+                expected = "".join(f"{line}\n" for line in interpreted(path.read_text(), ["Ada"] * 3))
+                self.assertEqual((result.returncode, result.stdout.replace("Your name: ", "")), (0, expected.replace("Your name: ", "")), result.stderr)
