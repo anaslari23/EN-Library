@@ -135,7 +135,7 @@ python3 dist/en.pyz run program.en     # or: ./dist/en.pyz run program.en
 python3 dist/en.pyz generate program.en
 ```
 
-Scripts can use `import codeinenglish` with `PYTHONPATH=dist/en.pyz`. The VS Code extension is only a convenience: it adds a Run button over these same commands.
+Scripts can use `import codeinenglish` with `PYTHONPATH=dist/en.pyz`. The built-in stdio LSP server (`python3 -m codeinenglish lsp`) provides universal IDE diagnostics without requiring any editor extensions.
 
 ## Nothing at all? Rebuild it from memory
 
