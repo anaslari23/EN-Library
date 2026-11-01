@@ -2,6 +2,67 @@
 
 `codeinenglish` is the offline Python implementation for Code in English. It translates documented English-like instructions and a growing set of DSA problem descriptions in `.en` files into editable Python. It uses deterministic rules and Python's standard library; it does not download models, contact a service, or execute generated programs.
 
+## Architecture
+
+The following diagram illustrates the architecture of the EN Language, showing the offline runtime, universal IDE integration, conversational OOP interpreter, and polyglot code generation library:
+
+```mermaid
+flowchart TB
+    subgraph Offline["Offline Architecture"]
+        subgraph IDE["EN Language Environment That Supports All IDEs"]
+            subgraph OOP["Object Oriented Language"]
+                EN["EN"]
+
+                Concept["A simplified coding language with OOP<br/>just using plain simple English<br/>that requires no coding logic to code"]
+
+                subgraph LeftTrack["Offline OOP Interpreter Track"]
+                    Interpreter["Own OOP language<br/>with its interpreter"]
+                    OfflineInterp["An interpreter that interprets<br/>the logic in English<br/>completely offline"]
+                    PlainEnglish["Write codes simply with English:<br/>no syntax but simple English<br/>logic and words"]
+                end
+
+                subgraph RightTrack["Polyglot CodeGen Library Track"]
+                    ENLib["EN library"]
+                    CodeGenNote["Complete set of code generation<br/>using the comment: '# write a program to...'<br/>and library directives"]
+                    GlobalDist["EN Library globally available<br/>for all coding languages<br/>(e.g., pip install en)"]
+                    PythonDirect["Supports in Python:<br/>import codeinenglish;"]
+                end
+
+                LoadLib{"Load library that generates<br/>code in specified language<br/>based on library imported"}
+
+                TargetGen["If user writes:<br/>import codeinpython;<br/>or import codeinc;<br/>or import codeinjavascript;<br/>or import codeinjava;<br/>Based on comment (# 'write a program to...')<br/>generate code in the loaded library"]
+
+                %% Data Flow
+                EN -->|Plain English OOP| Concept
+                EN --> Interpreter
+                Interpreter --> OfflineInterp
+                OfflineInterp --> PlainEnglish
+                PlainEnglish --> LoadLib
+
+                EN --> ENLib
+                ENLib -.-> CodeGenNote
+                ENLib ==>|Global Distribution| GlobalDist
+                ENLib --> PythonDirect
+                ENLib --> LoadLib
+
+                LoadLib --> TargetGen
+            end
+        end
+    end
+
+    %% Visual Styling
+    style Offline fill:#f4fbf5,stroke:#2e7d32,stroke-width:2px
+    style IDE fill:#f0f7ff,stroke:#0288d1,stroke-dasharray: 5 5,stroke-width:2px
+    style OOP fill:#fffcf5,stroke:#d32f2f,stroke-dasharray: 4 4,stroke-width:2px
+    style EN fill:#ffffff,stroke:#333333,stroke-width:3px,font-weight:bold
+    style Concept fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style GlobalDist fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
+    style LoadLib fill:#fff8e1,stroke:#f57f17,stroke-width:2px
+    style TargetGen fill:#fafafa,stroke:#424242,stroke-width:1.5px
+```
+
+*(Source architecture diagram: [docs/architecture.png](docs/architecture.png))*
+
 ## Install from this repository
 
 ```sh
