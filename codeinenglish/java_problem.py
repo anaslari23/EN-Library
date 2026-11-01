@@ -309,3 +309,4 @@ def _generate_java_examples(spec: ProblemSpec) -> str:
 
     lines.append(f'            System.out.println("All " + passed + " examples passed.");')
     return "\n".join(lines)
+

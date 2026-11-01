@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added first-class `import codein<lang>;` target directives (`import codeinpython;`, `import codeinc;`, `import codeinjavascript;`, `import codeinjava;`) across `.en` source contracts.
+- Added polyglot problem code generation and `--check-examples` verification runner for C and Java (`c_problem.py`, `java_problem.py`).
+- Added zero-dependency Language Server Protocol (LSP) server (`codeinenglish lsp`) over stdio JSON-RPC for universal IDE support (VS Code, JetBrains, Neovim, Sublime, Cursor).
+- Added conversational plain-English OOP phrasing (`create a class named ...`, `create a constructor taking ...`, `create a method named ...`, `tell X to speak`) with offline interpreter and generator parity.
 - Added typed synthesis (`synth.py`): about 90 composable operations, type-checked orderings, behaviour-based ambiguity detection, example verification, and cross-checking against the catalog.
 - Synthesized programs now generate JavaScript (`target javascript`), checked against Python by a differential test over every operation and random chains.
 - Fixed catalog answers that silently dropped a word (`not`, `cubes`), mis-typed a number request as a list sum, or read `up to n` as exclusive.

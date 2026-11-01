@@ -202,3 +202,4 @@ class LanguageServer:
 def run_lsp_server() -> int:
     server = LanguageServer()
     return server.run()
+
