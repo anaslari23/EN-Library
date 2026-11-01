@@ -40,6 +40,7 @@ def _argument_parser() -> argparse.ArgumentParser:
     migrate.add_argument("source", help="source file to migrate")
     migrate.add_argument("--to", choices=("0.1", "0.2"), help="target EN version (defaults to the newest supported version)")
     migrate.add_argument("--write", action="store_true", help="write the migration atomically; default is a preview")
+    commands.add_parser("lsp", help="run the zero-dependency Language Server Protocol (LSP) server for all IDEs")
     return parser
 
 
@@ -50,6 +51,9 @@ def main(argv: list[str] | None = None) -> int:
         return int(error.code)
 
     try:
+        if arguments.command == "lsp":
+            from .lsp import run_lsp_server
+            return run_lsp_server()
         if arguments.command in ("check",) or (arguments.command == "generate" and arguments.json):
             return _json_command(arguments)
         if arguments.command == "misses":
