@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 
 from .errors import CodeInEnglishError
-from .ir import Append, Assign, Binary, Compare, CreateList, Display, ForEach, If, Literal, Name, Program
+from .ir import Append, Assign, Binary, Break, Compare, Continue, CreateList, Display, ForEach, If, Literal, Name, Program, While
 
 _LIMIT = 1000  # items per list
 
@@ -70,6 +70,8 @@ class _Generator:
             elif isinstance(node, ForEach):
                 self.types[node.name] = "i"
                 self.scan(node.body)
+            elif isinstance(node, While):
+                self.scan(node.body)
             elif isinstance(node, If):
                 self.scan(node.body)
                 self.scan(node.otherwise or [])
@@ -105,6 +107,14 @@ class _Generator:
                 lines.append(f"{pad}    e_{node.name} = e_{source}[{counter}];")
                 lines += self.block(node.body, indent + 1)
                 lines.append(f"{pad}}}")
+            elif isinstance(node, While):
+                lines.append(f"{pad}while ({self.condition(node.condition)}) {{")
+                lines += self.block(node.body, indent + 1)
+                lines.append(f"{pad}}}")
+            elif isinstance(node, Break):
+                lines.append(f"{pad}break;")
+            elif isinstance(node, Continue):
+                lines.append(f"{pad}continue;")
             else:
                 _fail(self.filename, f"C output supports the core language only (not {type(node).__name__})")
         return lines

@@ -11,9 +11,9 @@ import json
 
 from .errors import CodeInEnglishError
 from .ir import (
-    Append, Assign, Attribute, Binary, ClassDef, Compare, Contains, CreateDictionary, CreateInstance,
-    CreateList, Display, ForEach, If, Index, Literal, MethodCall, Name, Program, ReadInput, Return,
-    SetAttribute, SetItem,
+    Append, Assign, Attribute, Binary, Break, ClassDef, Compare, Contains, Continue,
+    CreateDictionary, CreateInstance, CreateList, Display, ForEach, If, Index,
+    Literal, MethodCall, Name, Program, ReadInput, Return, SetAttribute, SetItem, While,
 )
 
 _IMPORTS = "import java.io.*;\nimport java.lang.reflect.*;\nimport java.util.*;\n"
@@ -227,6 +227,8 @@ class _Generator:
             elif isinstance(node, ForEach):
                 names.add(node.name)
                 names |= self.declared(node.body)
+            elif isinstance(node, While):
+                names |= self.declared(node.body)
             elif isinstance(node, If):
                 names |= self.declared(node.body) | self.declared(node.otherwise or [])
         return names
@@ -262,6 +264,14 @@ class _Generator:
                 lines.append(f"{pad}  en_{node.name} = en__item;")
                 lines += self.block(node.body, indent + 1)
                 lines.append(f"{pad}}}")
+            elif isinstance(node, While):
+                lines.append(f"{pad}while ({self.condition(node.condition)}) {{")
+                lines += self.block(node.body, indent + 1)
+                lines.append(f"{pad}}}")
+            elif isinstance(node, Break):
+                lines.append(f"{pad}break;")
+            elif isinstance(node, Continue):
+                lines.append(f"{pad}continue;")
             elif isinstance(node, ClassDef):
                 continue  # emitted as a top-level Java class
             elif isinstance(node, CreateInstance):

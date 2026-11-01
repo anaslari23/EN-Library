@@ -6,9 +6,9 @@ import json
 
 from .errors import CodeInEnglishError
 from .ir import (
-    Append, Assign, Attribute, Binary, ClassDef, Compare, Contains, CreateDictionary, CreateInstance,
-    CreateList, Display, ForEach, If, Index, Literal, MethodCall, Name, Program, ReadInput, Return,
-    SetAttribute, SetItem,
+    Append, Assign, Attribute, Binary, Break, ClassDef, Compare, Contains, Continue,
+    CreateDictionary, CreateInstance, CreateList, Display, ForEach, If, Index,
+    Literal, MethodCall, Name, Program, ReadInput, Return, SetAttribute, SetItem, While,
 )
 
 # Helpers keep Python's behaviour where plain JavaScript differs: strict types, errors for bad index/key/field,
@@ -123,6 +123,8 @@ class _Generator:
             elif isinstance(node, ForEach):
                 names.add(node.name)
                 names |= self.declared(node.body)
+            elif isinstance(node, While):
+                names |= self.declared(node.body)
             elif isinstance(node, If):
                 names |= self.declared(node.body) | self.declared(node.otherwise or [])
         return names
@@ -158,6 +160,14 @@ class _Generator:
                 lines.append(f"{pad}  en_{node.name} = en__item;")
                 lines += self.block(node.body, indent + 1)
                 lines.append(f"{pad}}}")
+            elif isinstance(node, While):
+                lines.append(f"{pad}while ({self.expr(node.condition)}) {{")
+                lines += self.block(node.body, indent + 1)
+                lines.append(f"{pad}}}")
+            elif isinstance(node, Break):
+                lines.append(f"{pad}break;")
+            elif isinstance(node, Continue):
+                lines.append(f"{pad}continue;")
             elif isinstance(node, ClassDef):
                 lines += self.class_def(node, indent)
             elif isinstance(node, CreateInstance):
@@ -199,3 +209,6 @@ def program_javascript(program: Program, filename: str) -> str:
     declarations = [f"  let {', '.join(f'en_{name}' for name in names)};"] if names else []
     return "\n".join([_PRELUDE + "try {", *declarations, *body,
                       "} catch (error) {", "  console.error(error.message);", "  process.exit(1);", "}", ""])
+
+
+program_js = program_javascript

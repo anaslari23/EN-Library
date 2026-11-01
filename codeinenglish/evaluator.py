@@ -3,9 +3,9 @@ import operator
 
 from .errors import CodeInEnglishError
 from .ir import (
-    Append, Assign, Attribute, Binary, ClassDef, Compare, Contains, CreateDictionary, CreateInstance,
-    CreateList, Display, ForEach, If, Index, Literal, MethodCall, Name, Program, ReadInput, Return,
-    SetAttribute, SetItem,
+    Append, Assign, Attribute, Binary, Break, ClassDef, Compare, Contains, Continue,
+    CreateDictionary, CreateInstance, CreateList, Display, ForEach, If, Index,
+    Literal, MethodCall, Name, Program, ReadInput, Return, SetAttribute, SetItem, While,
 )
 
 _BINARY = {"+": operator.add, "-": operator.sub, "*": operator.mul, "/": operator.truediv}
@@ -15,6 +15,14 @@ _COMPARE = {"==": operator.eq, "!=": operator.ne, ">": operator.gt, "<": operato
 class _Return(Exception):
     def __init__(self, value):
         self.value = value
+
+
+class _Break(Exception):
+    pass
+
+
+class _Continue(Exception):
+    pass
 
 
 class _Class:
@@ -42,7 +50,7 @@ class _Super:
         self.instance, self.parent = instance, parent
 
 
-def run(program: Program, read=input, write=print, filename: str = "<string>") -> None:
+def run(program: Program, read=input, write=print, filename: str = "<string>", scope: dict | None = None) -> dict:
     """Execute a program IR directly; the reference semantics shared with the generators."""
 
     def fail(message):
@@ -124,7 +132,24 @@ def run(program: Program, read=input, write=print, filename: str = "<string>") -
             elif isinstance(node, ForEach):
                 for item in guard(lambda: list(expr(node.collection, scope))):
                     scope[node.name] = item
-                    block(node.body, scope)
+                    try:
+                        block(node.body, scope)
+                    except _Continue:
+                        continue
+                    except _Break:
+                        break
+            elif isinstance(node, While):
+                while expr(node.condition, scope):
+                    try:
+                        block(node.body, scope)
+                    except _Continue:
+                        continue
+                    except _Break:
+                        break
+            elif isinstance(node, Break):
+                raise _Break()
+            elif isinstance(node, Continue):
+                raise _Continue()
             elif isinstance(node, ClassDef):
                 scope[node.name] = _Class(node.name, {method.name: method for method in node.methods}, scope.get(node.parent))
             elif isinstance(node, CreateInstance):
@@ -144,4 +169,7 @@ def run(program: Program, read=input, write=print, filename: str = "<string>") -
             else:
                 fail(f"unsupported statement {type(node).__name__}")
 
-    block(program.statements, {})
+    if scope is None:
+        scope = {}
+    block(program.statements, scope)
+    return scope

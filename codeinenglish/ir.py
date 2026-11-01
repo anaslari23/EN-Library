@@ -110,6 +110,22 @@ class ForEach:
 
 
 @dataclass(frozen=True)
+class While:
+    condition: Expr
+    body: list["Statement"]
+
+
+@dataclass(frozen=True)
+class Break:
+    pass
+
+
+@dataclass(frozen=True)
+class Continue:
+    pass
+
+
+@dataclass(frozen=True)
 class MethodDef:
     name: str
     parameters: list[str]
@@ -142,7 +158,11 @@ class Return:
     value: Expr
 
 
-Statement = Union[Assign, ReadInput, Display, If, CreateList, CreateDictionary, Append, SetItem, ForEach, ClassDef, MethodDef, CreateInstance, SetAttribute, Return, MethodCall]
+Statement = Union[
+    Assign, ReadInput, Display, If, CreateList, CreateDictionary, Append,
+    SetItem, ForEach, While, Break, Continue, ClassDef, MethodDef,
+    CreateInstance, SetAttribute, Return, MethodCall
+]
 
 
 @dataclass(frozen=True)

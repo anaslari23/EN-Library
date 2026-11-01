@@ -7,8 +7,10 @@ from .ir import (
     Attribute,
     Assign,
     Binary,
+    Break,
     Compare,
     Contains,
+    Continue,
     ClassDef as ClassDefinition,
     CreateDictionary,
     CreateInstance,
@@ -28,6 +30,7 @@ from .ir import (
     SetAttribute,
     SetItem,
     Statement,
+    While,
 )
 
 
@@ -183,6 +186,18 @@ def _statements(nodes: list[Statement]) -> list[ast.stmt]:
                     type_comment=None,
                 )
             )
+        elif isinstance(node, While):
+            result.append(
+                ast.While(
+                    test=_expression(node.condition),
+                    body=_statements(node.body) or [ast.Pass()],
+                    orelse=[],
+                )
+            )
+        elif isinstance(node, Break):
+            result.append(ast.Break())
+        elif isinstance(node, Continue):
+            result.append(ast.Continue())
         elif isinstance(node, ClassDefinition):
             methods = []
             for method in node.methods:

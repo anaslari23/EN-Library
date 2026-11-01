@@ -64,11 +64,15 @@ def _split_arguments(text: str) -> list[str]:
 class _ExpressionParser:
     _operators = (
         (("is", "in"), "in", 1),
+        (("is", "not", "equal", "to"), "!=", 1),
         (("is", "not"), "!=", 1),
         (("is", "greater", "than"), ">", 1),
         (("is", "less", "than"), "<", 1),
         (("greater", "than"), ">", 1),
         (("less", "than"), "<", 1),
+        (("is", "equal", "to"), "==", 1),
+        (("equal", "to"), "==", 1),
+        (("equals",), "==", 1),
         (("is",), "==", 1),
         (("plus",), "+", 10),
         (("minus",), "-", 10),

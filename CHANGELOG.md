@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added conversational `while` loops (`while <condition>`, `repeat while <condition>`, `as long as <condition>`, `end while`) across parser, IR, evaluator, and all backends (Python, C, Java, JavaScript).
+- Added conversational loop controls: `stop the loop` / `break out of the loop` (`Break`) and `skip to next` / `continue` (`Continue`), with strict loop-depth validation.
+- Added conversational increment/decrement statements: `increase <name> by <amount>` and `decrease <name> by <amount>`.
+- Added interactive terminal REPL (`python3 -m codeinenglish repl`) with live state persistence, multi-line block entry, expression evaluation, and built-in `help` and `vars` commands.
+- Removed external `vscode-extension` dependency in favor of standalone zero-dependency stdio LSP (`python3 -m codeinenglish lsp`).
 - Added first-class `import codein<lang>;` target directives (`import codeinpython;`, `import codeinc;`, `import codeinjavascript;`, `import codeinjava;`) across `.en` source contracts.
 - Added polyglot problem code generation and `--check-examples` verification runner for C and Java (`c_problem.py`, `java_problem.py`).
 - Added zero-dependency Language Server Protocol (LSP) server (`codeinenglish lsp`) over stdio JSON-RPC for universal IDE support (VS Code, JetBrains, Neovim, Sublime, Cursor).

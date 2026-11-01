@@ -11,7 +11,9 @@ from .ir import (
     Binary,
     Compare,
     Contains,
+    Break,
     ClassDef,
+    Continue,
     CreateInstance,
     CreateDictionary,
     CreateList,
@@ -20,6 +22,7 @@ from .ir import (
     ForEach,
     If,
     Index,
+    Literal,
     Name,
     MethodCall,
     MethodDef,
@@ -29,6 +32,7 @@ from .ir import (
     SetAttribute,
     SetItem,
     Statement,
+    While,
 )
 
 
@@ -113,12 +117,12 @@ def _check_name(name: str, filename: str, line: int) -> None:
         raise CodeInEnglishError(filename, line, f"{name!r} is reserved by the translator")
 
 
-def parse_program(source: str, filename: str = "<string>") -> Program:
+def parse_program(source: str, filename: str = "<string>", known_names: set[str] | None = None, known_classes: set[str] | None = None) -> Program:
     """Parse supported English statements into a source-located program IR."""
     statements: list[Statement] = []
-    names: set[str] = set()
+    names: set[str] = set(known_names) if known_names else set()
     collection_kinds: dict[str, str] = {}
-    classes: set[str] = set()
+    classes: set[str] = set(known_classes) if known_classes else set()
     loop_scopes: list[set[str]] = []
     blocks: list[dict] = []
 
@@ -164,6 +168,8 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
         elif expected_kind == "for":
             loop_scopes.pop()
             statement = ForEach(frame["name"], frame["collection"], frame["body"])
+        elif expected_kind == "while":
+            statement = While(frame["condition"], frame["body"])
         elif expected_kind == "method":
             if len(blocks) != 1 or blocks[-1]["kind"] != "class":
                 raise CodeInEnglishError(filename, line_number, "method must be directly inside a class")
@@ -270,6 +276,36 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
         if line == "end for":
             close_block("for", line_number)
             continue
+        if line in ("end while", "end repeat"):
+            close_block("while", line_number)
+            continue
+
+        while_match = re.fullmatch(r"(?:repeat\s+while|as\s+long\s+as|while)\s+(.+?)(?:\s+do|\s+then)?:?", line)
+        if while_match:
+            raw_condition = while_match.group(1).strip()
+            condition = parse_expression(raw_condition, filename=filename, line=line_number)
+            if not isinstance(condition, (Compare, Contains, Name, Literal, MethodCall, Binary)):
+                raise CodeInEnglishError(filename, line_number, "a while loop condition must be a valid comparison or test")
+            _validate_expression(condition, visible_names(), filename, line_number)
+            blocks.append({
+                "kind": "while",
+                "condition": condition,
+                "line": line_number,
+                "body": [],
+            })
+            continue
+
+        if line in ("break out of the loop", "break out of loop", "stop the loop", "exit the loop", "break"):
+            if not any(frame["kind"] in ("for", "while") for frame in blocks):
+                raise CodeInEnglishError(filename, line_number, "stop the loop / break can only be used inside a loop")
+            append(Break())
+            continue
+
+        if line in ("skip to next iteration", "skip to next", "continue to next iteration", "continue to next", "continue"):
+            if not any(frame["kind"] in ("for", "while") for frame in blocks):
+                raise CodeInEnglishError(filename, line_number, "skip to next / continue can only be used inside a loop")
+            append(Continue())
+            continue
 
         instance_match = re.fullmatch(r"(?:make|create)\s+an?\s+(?:new\s+)?([A-Za-z_][A-Za-z0-9_]*)\s+(?:called|named)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+with\s+(.+))?", line)
         if instance_match:
@@ -292,6 +328,26 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
             value = parse_expression(raw_value, filename=filename, line=line_number)
             _validate_expression(value, visible_names(), filename, line_number)
             append(SetAttribute(Name(receiver), attribute, value))
+            continue
+
+        inc_match = re.fullmatch(r"increase\s+([A-Za-z_][A-Za-z0-9_]*)\s+by\s+(.+)", line)
+        if inc_match:
+            name, raw_delta = inc_match.groups()
+            if name not in visible_names():
+                raise CodeInEnglishError(filename, line_number, f"unknown name {name!r}", kind="unknown_name")
+            delta = parse_expression(raw_delta, filename=filename, line=line_number)
+            _validate_expression(delta, visible_names(), filename, line_number)
+            append(Assign(name, Binary(Name(name), "+", delta)))
+            continue
+
+        dec_match = re.fullmatch(r"decrease\s+([A-Za-z_][A-Za-z0-9_]*)\s+by\s+(.+)", line)
+        if dec_match:
+            name, raw_delta = dec_match.groups()
+            if name not in visible_names():
+                raise CodeInEnglishError(filename, line_number, f"unknown name {name!r}", kind="unknown_name")
+            delta = parse_expression(raw_delta, filename=filename, line=line_number)
+            _validate_expression(delta, visible_names(), filename, line_number)
+            append(Assign(name, Binary(Name(name), "-", delta)))
             continue
 
         if line.startswith("return "):
@@ -374,7 +430,7 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
             append(Display(values))
             continue
 
-        if line.startswith(("set ", "let ", "ask ", "if ", "for ", "add ")):
+        if line.startswith(("set ", "let ", "ask ", "if ", "for ", "add ", "while ", "repeat ")):
             raise CodeInEnglishError(filename, line_number, f"malformed instruction {line!r}")
         raise CodeInEnglishError(filename, line_number, f"unrecognized instruction {line!r}", kind="unsupported")
 
@@ -382,3 +438,6 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
         frame = blocks[-1]
         raise CodeInEnglishError(filename, frame["line"], f"{frame['kind']} block needs 'end {frame['kind']}'")
     return Program(statements)
+
+
+parse = parse_program
