@@ -15,6 +15,11 @@ MIGRATION_PATHS: dict[tuple[int, int] | None, tuple[int, int]] = {
     (0, 1): (0, 2),
 }
 LIBRARY_DIRECTIVE = "import codeinpython library"
+_IMPORT_CODEIN_RE = re.compile(
+    r"^import\s+codein([a-zA-Z]+)(?:\s+library)?\s*;?$",
+    re.IGNORECASE,
+)
+
 
 
 @dataclass(frozen=True)
@@ -191,14 +196,36 @@ def read_contract(source: str, filename: str) -> SourceContract:
             continue
 
         folded = stripped.casefold()
-        is_alias = folded == LIBRARY_DIRECTIVE
+        is_legacy_alias = folded == LIBRARY_DIRECTIVE or folded == LIBRARY_DIRECTIVE + ";"
         target_match = folded == "target" or folded.startswith("target ") or folded.startswith("target\t")
-        if is_alias or target_match:
-            if versioned_02 and is_alias:
+        import_match = _IMPORT_CODEIN_RE.match(stripped)
+        is_import_directive = bool(import_match) or folded in ("import codein", "import codein;", "import codein ;")
+
+        if is_legacy_alias or target_match or is_import_directive:
+            is_alias = is_legacy_alias
+            if versioned_02 and is_legacy_alias:
                 report("EN-E203", "error", line_number,
                        '"import codeinpython library" is not allowed in en 0.2. Write "target python".', hint="target python")
                 continue
-            if target_match:
+            if is_import_directive and not is_legacy_alias:
+                if not import_match:
+                    report("EN-E202", "error", line_number,
+                           f'Unknown target directive "{stripped}". Supported targets: python, javascript, java, c.')
+                    continue
+                raw_lang = import_match.group(1)
+                lang = raw_lang.casefold()
+                if lang == "js":
+                    lang = "javascript"
+                if versioned_02 and (not stripped.startswith("import codein") or raw_lang not in (lang, "js")):
+                    report("EN-E202", "error", line_number,
+                           f'Unknown target "{raw_lang}". Supported targets: python, javascript, java, c.')
+                    continue
+                if lang not in ("python", "javascript", "java", "c"):
+                    report("EN-E202", "error", line_number,
+                           f'Unknown target "{raw_lang if versioned_02 else lang}". Supported targets: python, javascript, java, c.')
+                    continue
+                name = lang
+            elif target_match:
                 # 0.2 keywords are exact lowercase; 0.1 and legacy retain case folding.
                 if versioned_02 and not stripped.startswith("target"):
                     report("EN-E202", "error", line_number,

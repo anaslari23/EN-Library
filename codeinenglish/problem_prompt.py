@@ -6,6 +6,11 @@ import re
 from .errors import CodeInEnglishError
 
 LIBRARY_DIRECTIVE = "import codeinpython library"
+_IMPORT_CODEIN_RE = re.compile(
+    r"^import\s+codein([a-zA-Z]+)(?:\s+library)?\s*;?$",
+    re.IGNORECASE,
+)
+
 
 
 @dataclass(frozen=True)
@@ -36,7 +41,7 @@ def extract_problem_prompt(source: str, filename: str = "<string>") -> ProblemPr
         stripped = original.strip()
         if not stripped:
             continue
-        if stripped == LIBRARY_DIRECTIVE:
+        if stripped == LIBRARY_DIRECTIVE or _IMPORT_CODEIN_RE.match(stripped) or stripped.startswith("target "):
             if directive_seen:
                 raise CodeInEnglishError(filename, line_number, "library directive may appear only once")
             directive_seen = True

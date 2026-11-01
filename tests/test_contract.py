@@ -117,6 +117,44 @@ class SourceContractTests(unittest.TestCase):
         self.assertTrue(old.ok)
         self.assertIn("EN-E203", self.codes(current))
 
+    def test_import_codein_directives(self):
+        targets = [
+            ("import codeinpython;", "python"),
+            ("import codeinc;", "c"),
+            ("import codeinjavascript;", "javascript"),
+            ("import codeinjava;", "java"),
+            ("import codeinpython", "python"),
+            ("import codeinc", "c"),
+            ("import codeinjs;", "javascript"),
+        ]
+        for directive, expected in targets:
+            contract_02 = read_contract(f"en 0.2\n{directive}\nset total to 5.\n", "test.en")
+            self.assertTrue(contract_02.ok, f"Directive '{directive}' failed in en 0.2")
+            self.assertEqual(contract_02.target, expected)
+
+            contract_legacy = read_contract(f"{directive}\nset total to 5.\n", "test_legacy.en")
+            self.assertEqual(contract_legacy.target, expected)
+
+        # Misplaced after instruction
+        misplaced = read_contract("en 0.2\nset total to 5.\nimport codeinc;\n", "misplaced.en")
+        self.assertIn("EN-E204", self.codes(misplaced))
+
+        # Conflicting
+        conflict = read_contract("en 0.2\nimport codeinpython;\nimport codeinc;\nset total to 5.\n", "conflict.en")
+        self.assertIn("EN-E201", self.codes(conflict))
+
+        # Repeated
+        repeat = read_contract("en 0.2\nimport codeinc;\nimport codeinc;\nset total to 5.\n", "repeat.en")
+        self.assertIn("EN-E205", self.codes(repeat))
+
+        # Unknown target
+        unknown = read_contract("en 0.2\nimport codeinrust;\nset total to 5.\n", "unknown.en")
+        self.assertIn("EN-E202", self.codes(unknown))
+
+        # Case sensitivity in en 0.2
+        cased = read_contract("en 0.2\nimport codeinPython;\nset total to 5.\n", "cased.en")
+        self.assertIn("EN-E202", self.codes(cased))
+
 
 if __name__ == "__main__":
     unittest.main()
