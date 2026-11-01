@@ -51,7 +51,7 @@ HELPERS = {
     "_fibonacci": "def _fibonacci(n):\n    if n > 100000:\n        raise ValueError('number too large for this operation')\n    if n < 0:\n        return None\n    previous, current = 0, 1\n    for _ in range(n):\n        previous, current = current, previous + current\n    return previous\n",
     "_fib_list": "def _fib_list(n):\n    if n > 100000:\n        raise ValueError('number too large for this operation')\n    result = []\n    previous, current = 0, 1\n    for _ in range(max(n, 0)):\n        result.append(previous)\n        previous, current = current, previous + current\n    return result\n",
     "_collatz_steps": "def _collatz_steps(n):\n    if n > 10 ** 18:\n        raise ValueError('number too large for this operation')\n    if n < 1:\n        return None\n    steps = 0\n    while n != 1:\n        n = n // 2 if n % 2 == 0 else 3 * n + 1\n        steps += 1\n    return steps\n",
-    "_is_square": "def _is_square(n):\n    if n < 0:\n        return False\n    root = int(n ** 0.5)\n    while root * root > n:\n        root -= 1\n    while (root + 1) * (root + 1) <= n:\n        root += 1\n    return root * root == n\n",
+    "_is_square": "def _is_square(n):\n    if n < 0:\n        return False\n    import math\n    root = math.isqrt(n)\n    return root * root == n\n",
     "_is_leap": "def _is_leap(year):\n    return (year % 4 == 0 and year % 100 != 0) or year % 400 == 0\n",
     "_is_armstrong": "def _is_armstrong(n):\n    if n < 0:\n        return False\n    digits = str(n)\n    return sum(int(d) ** len(digits) for d in digits) == n\n",
     "_is_perfect": "def _is_perfect(n):\n    if n > 10 ** 5:\n        raise ValueError('number too large for this operation')\n    return n > 1 and sum(d for d in range(1, n) if n % d == 0) == n\n",
@@ -60,7 +60,7 @@ HELPERS = {
     "_consonants": "def _consonants(text):\n    return sum(1 for c in text.lower() if c.isalpha() and c not in 'aeiou')\n",
     "_primes_up_to": "def _primes_up_to(n):\n    if n > 10 ** 5:\n        raise ValueError('number too large for this operation')\n    if n < 2:\n        return []\n    flags = [True] * (n + 1)\n    flags[0] = flags[1] = False\n    for p in range(2, int(n ** 0.5) + 1):\n        if flags[p]:\n            for m in range(p * p, n + 1, p):\n                flags[m] = False\n    return [i for i, f in enumerate(flags) if f]\n",
     "_cap": "def _cap(n):\n    if abs(n) > 10 ** 5:\n        raise ValueError('number too large for this operation')\n    return n\n",
-    "_binary": "def _binary(n):\n    return bin(n)[2:] if n >= 0 else '-' + bin(-n)[3:]\n",
+    "_binary": "def _binary(n):\n    return bin(n)[2:] if n >= 0 else '-' + bin(-n)[2:]\n",
 }
 
 OPS: list = []
@@ -216,10 +216,17 @@ def _steps_of(chain):
     return [(item[0].expr, item[1]) if item[0] is not None else (item[2], None) for item in chain]
 
 
+def nullable(op) -> bool:
+    """True for operations that can answer null (an empty list's maximum, a negative factorial, ...)."""
+    return op is not None and "null" in op.note.lower()
+
+
 def _run(chain, value):
     try:
-        for expr, n in _steps_of(chain):
+        for index, (expr, n) in enumerate(_steps_of(chain)):
             value = _function_of(expr, n)(value)
+            if value is None and index < len(chain) - 1:  # no value: nothing to continue with
+                return None
         return value
     except Exception as error:  # a runtime failure is part of the behaviour being compared
         return "ERR:" + type(error).__name__
@@ -307,6 +314,8 @@ class Program:
     def assumptions(self):
         notes = [f"Interpreted as: {self.paraphrase}."]
         notes += [item[0].note for item in self.chain if item[0] is not None and item[0].note]
+        if any(nullable(item[0]) for item in self.chain[:-1]):
+            notes.append("If a step has no value (null), the result is null.")
         return list(dict.fromkeys(notes))
 
     def helper_names(self):
@@ -320,10 +329,12 @@ class Program:
     def source(self) -> str:
         parameter = self.parameter[0]
         lines = [f"def {self.function_name}({parameter}):", f"    value = {parameter}"]
-        for op, n, expr, says in self.chain:
+        for index, (op, n, expr, says) in enumerate(self.chain):
             body = (op.expr if op is not None else expr).replace("{x}", "value").replace("{n}", str(n))
             label = says if op is None else (op.says.replace("N", str(n)) if n is not None else op.says)
             lines.append(f"    value = {body}  # {label}")
+            if nullable(op) and index < len(self.chain) - 1:
+                lines += ["    if value is None:", "        return None  # no value to continue with"]
         lines.append("    return value")
         return "\n".join(lines) + "\n"
 

@@ -22,6 +22,11 @@ def generate_javascript(program: Program | ProblemSpec, filename: str) -> str:
 def _problem_javascript(spec: ProblemSpec, filename: str) -> str:
     if spec.family.value in BY_KEY or spec.stages:
         return recipe_javascript(spec, filename)
+    if spec.program is not None:
+        from .synth_js import chain_function_js
+        from .transpile_js import runner_javascript
+        helpers, _, function = chain_function_js(spec.program, filename)
+        return runner_javascript(spec, helpers + "\n" + function)
     raise CodeInEnglishError(filename, 1, f"JavaScript does not yet support {spec.family.value} problems", kind="unsupported")
 
 

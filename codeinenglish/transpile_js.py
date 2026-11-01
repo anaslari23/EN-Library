@@ -191,6 +191,12 @@ def recipe_javascript(spec, filename: str) -> str:
         for stage in stages:
             chained = f"{stage.function_name}({chained})"
         function += f"\nfunction {name}({_name(spec.inputs[0].name)}) {{ return {chained}; }}"
+    return runner_javascript(spec, function)
+
+
+def runner_javascript(spec, function: str) -> str:
+    """Wrap `function` (named spec.function_name) with input checks, example checking and JSON I/O."""
+    name = spec.function_name
     names = [item.name for item in spec.inputs]
     checks = "\n".join(
         f"  if (!({_CHECKS[item.kind].format(f'input.{item.name}')})) throw new Error('input.{item.name} must be {item.kind}');"
