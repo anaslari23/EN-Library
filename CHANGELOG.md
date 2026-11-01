@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added Inductive Program Synthesis (Programming-by-Example / PBE via `inductive_synth.py`): discovers typed algorithms and pipelines from `#? Example input/output` when the English wording uses uncataloged, novel phrasing.
+- Added Autonomous Recipe Multiplier (`scripts/multiply_recipes.py`): discovers, type-checks, probe-verifies, and exports thousands of composable algorithmic pipelines ($A \to B \to C$) automatically from the combinator graph without manual recipe authoring.
 - Added standalone conversational functions (`define a function named ... taking ...`, `to <name> taking ...:`, `end function`) with scoped parameter frames, return value support, and calling syntax (`call <func> with <args>`) in expressions and as standalone statements across all backends.
 - Added conversational `while` loops (`while <condition>`, `repeat while <condition>`, `as long as <condition>`, `end while`) across parser, IR, evaluator, and all backends (Python, C, Java, JavaScript).
 - Added conversational loop controls: `stop the loop` / `break out of the loop` (`Break`) and `skip to next` / `continue` (`Continue`), with strict loop-depth validation.

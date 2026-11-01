@@ -502,6 +502,11 @@ def recognize_problem(prompt: ProblemPrompt, filename: str = "<string>") -> Prob
             return _synth_spec(program, prompt)
         if refusal is not None and refusal.kind == "ambiguous":  # includes "no reading reproduces your example"
             raise CodeInEnglishError(filename, error.line, refusal.message, kind="ambiguous") from None
+        if prompt.examples:
+            from .inductive_synth import inductive_synthesize
+            ind_prog = inductive_synthesize(prompt.examples, prompt.text)
+            if ind_prog is not None:
+                return _synth_spec(ind_prog, prompt)
         raise
     if program is not None and _disagrees(catalog, program):
         return _synth_spec(program, prompt)
