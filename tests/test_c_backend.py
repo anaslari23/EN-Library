@@ -55,6 +55,28 @@ class CBackendTests(unittest.TestCase):
                     generate_file(en)
                 self.assertEqual(caught.exception.kind, "unsupported")
 
+    def test_c_problem_generation_and_examples(self):
+        cases = [
+            ("binary search", 'import codeinc;\n# Find the target in a sorted list and return its index, or -1 if absent.\n# Example input: {"nums":[1,4,8,12],"target":8}\n# Example output: 2\n'),
+            ("minimum", 'import codeinc;\n# Find the minimum of a list.\n# Example input: {"nums":[5,2,9,1]}\n# Example output: 1\n'),
+            ("maximum", 'import codeinc;\n# Find the maximum of a list.\n# Example input: {"nums":[5,2,9,1]}\n# Example output: 9\n'),
+            ("sum", 'import codeinc;\n# Calculate the sum of a list.\n# Example input: {"nums":[1,2,3,4]}\n# Example output: 10\n'),
+            ("reverse text", 'import codeinc;\n# Return the word reversed.\n# Example input: {"text":"hello"}\n# Example output: "olleh"\n'),
+            ("palindrome", 'import codeinc;\n# Check if a word is a palindrome.\n# Example input: {"text":"racecar"}\n# Example output: true\n'),
+            ("factorial", 'import codeinc;\n# Calculate the factorial of a number.\n# Example input: {"n":5}\n# Example output: 120\n'),
+        ]
+        for name, src in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as directory:
+                en = Path(directory) / "p.en"
+                en.write_text(src, encoding="utf-8")
+                c_file = generate_file(en)
+                bin_path = Path(directory) / "p"
+                built = subprocess.run([CC, "-Wall", "-Werror", "-o", str(bin_path), str(c_file)], capture_output=True, text=True)
+                self.assertEqual(built.returncode, 0, built.stderr)
+                run_res = subprocess.run([str(bin_path), "--check-examples"], capture_output=True, text=True)
+                self.assertEqual(run_res.returncode, 0, run_res.stderr)
+                self.assertIn("All 1 examples passed.", run_res.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

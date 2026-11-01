@@ -32,11 +32,13 @@ def _problem_javascript(spec: ProblemSpec, filename: str) -> str:
 
 def generate_java(program: Program | ProblemSpec, filename: str) -> str:
     if isinstance(program, ProblemSpec):
-        raise CodeInEnglishError(filename, 1, "Java output supports instruction programs for now; use target python or javascript for problem requests", kind="unsupported")
+        from .java_problem import generate_java_problem
+        return generate_java_problem(program, filename)
     return program_java(program, filename)
 
 
 def generate_c(program: Program | ProblemSpec, filename: str) -> str:
     if isinstance(program, ProblemSpec):
-        raise CodeInEnglishError(filename, 1, "C output supports instruction programs for now; use target python, javascript or java for problem requests", kind="unsupported")
+        from .c_problem import generate_c_problem
+        return generate_c_problem(program, filename)
     return program_c(program, filename)
