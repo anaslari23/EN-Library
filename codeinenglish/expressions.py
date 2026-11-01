@@ -165,7 +165,7 @@ class _ExpressionParser:
 
 def parse_expression(text: str, *, filename: str, line: int) -> Expr:
     """Parse a documented English value or expression into the translator IR."""
-    call = re.fullmatch(r"call\s+([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)(?:\s+with\s+(.+))?", text.strip())
+    call = re.fullmatch(r"(?:call|tell)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\.|\s+to\s+)([A-Za-z_][A-Za-z0-9_]*)(?:\s+with\s+(.+))?", text.strip())
     if call:
         receiver, method, raw_arguments = call.groups()
         arguments = []

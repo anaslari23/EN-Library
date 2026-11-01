@@ -195,7 +195,7 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
             })
             continue
 
-        class_match = re.fullmatch(r"define a class called ([A-Za-z_][A-Za-z0-9_]*)(?: that extends ([A-Za-z_][A-Za-z0-9_]*))?", line)
+        class_match = re.fullmatch(r"(?:define|create)\s+a\s+class\s+(?:called|named)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+that\s+extends\s+([A-Za-z_][A-Za-z0-9_]*))?", line)
         if class_match:
             if blocks:
                 raise CodeInEnglishError(filename, line_number, "class definitions must be top-level")
@@ -210,7 +210,7 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
             continue
 
         method_match = re.fullmatch(
-            r"define a (?:method called ([A-Za-z_][A-Za-z0-9_]*)|(constructor))(?: with parameters? (.+))?", line
+            r"(?:define|create)\s+a\s+(?:(?:method|function)\s+(?:called|named)\s+([A-Za-z_][A-Za-z0-9_]*)|(constructor))(?:\s+(?:with\s+parameters?|taking)\s+(.+))?", line
         )
         if method_match:
             if not blocks or blocks[-1]["kind"] != "class":
@@ -271,7 +271,7 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
             close_block("for", line_number)
             continue
 
-        instance_match = re.fullmatch(r"make an? ([A-Za-z_][A-Za-z0-9_]*) called ([A-Za-z_][A-Za-z0-9_]*)(?: with (.+))?", line)
+        instance_match = re.fullmatch(r"(?:make|create)\s+an?\s+(?:new\s+)?([A-Za-z_][A-Za-z0-9_]*)\s+(?:called|named)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+with\s+(.+))?", line)
         if instance_match:
             class_name, name, raw_arguments = instance_match.groups()
             arguments = [parse_expression(part, filename=filename, line=line_number) for part in _split_arguments(raw_arguments)] if raw_arguments else []
@@ -302,13 +302,13 @@ def parse_program(source: str, filename: str = "<string>") -> Program:
             append(Return(value))
             continue
 
-        if line.startswith("call "):
+        if line.startswith("call ") or line.startswith("tell "):
             expression = parse_expression(line, filename=filename, line=line_number)
             _validate_expression(expression, visible_names(), filename, line_number)
             append(expression)
             continue
 
-        creation = re.fullmatch(r"make an empty (list|dictionary) called ([A-Za-z_][A-Za-z0-9_]*)", line)
+        creation = re.fullmatch(r"(?:make|create)\s+an\s+empty\s+(list|dictionary)\s+(?:called|named)\s+([A-Za-z_][A-Za-z0-9_]*)", line)
         if creation:
             kind, name = creation.groups()
             _check_name(name, filename, line_number)

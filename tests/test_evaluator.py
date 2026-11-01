@@ -39,6 +39,22 @@ class EvaluatorTests(unittest.TestCase):
     def test_classes_fields_and_methods(self):
         self.assertEqual(interpreted((EXAMPLES / "greeter.en").read_text()), ["Hello Ada"])
 
+    def test_conversational_english_classes_and_methods(self):
+        source = (
+            "create a class named Animal\n"
+            "create a constructor taking name\n"
+            "set self.name to name\n"
+            "end constructor\n"
+            "create a method named speak\n"
+            "return 'Hello from ' plus self.name\n"
+            "end method\n"
+            "end class\n"
+            "create a new Animal named buddy with 'Buddy'\n"
+            "set msg to tell buddy to speak\n"
+            "show msg\n"
+        )
+        self.assertEqual(interpreted(source), ["Hello from Buddy"])
+
     def test_constructor_inheritance_and_super(self):
         source = (EXAMPLES / "animals.en").read_text()
         self.assertEqual(interpreted(source), ["Rex makes a sound and barks", 3])
