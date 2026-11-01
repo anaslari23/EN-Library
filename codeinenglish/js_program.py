@@ -7,7 +7,7 @@ import json
 from .errors import CodeInEnglishError
 from .ir import (
     Append, Assign, Attribute, Binary, Break, ClassDef, Compare, Contains, Continue,
-    CreateDictionary, CreateInstance, CreateList, Display, ForEach, If, Index,
+    CreateDictionary, CreateInstance, CreateList, Display, ForEach, FunctionCall, FunctionDef, If, Index,
     Literal, MethodCall, Name, Program, ReadInput, Return, SetAttribute, SetItem, While,
 )
 
@@ -112,6 +112,9 @@ class _Generator:
             if node.value == Name("super"):
                 return f"super.{'__init__' if node.name == 'init' else node.name}({arguments})"
             return f"{self.expr(node.value)}.{node.name}({arguments})"
+        if isinstance(node, FunctionCall):
+            arguments = ", ".join(self.expr(argument) for argument in node.arguments)
+            return f"en_{node.name}({arguments})"
         _fail(self.filename, f"JavaScript does not yet support {type(node).__name__} expressions")
 
     def declared(self, statements):
@@ -177,7 +180,16 @@ class _Generator:
                 lines.append(f"{pad}{self.expr(node.value)}.{node.name} = {self.expr(node.expression)};")
             elif isinstance(node, Return):
                 lines.append(f"{pad}return {self.expr(node.value)};")
-            elif isinstance(node, MethodCall):
+            elif isinstance(node, FunctionDef):
+                parameters = ", ".join(f"en_{param}" for param in node.parameters)
+                lines.append(f"{pad}function en_{node.name}({parameters}) {{")
+                local = sorted(self.declared(node.body) - set(node.parameters))
+                if local:
+                    lines.append(f"{pad}  let {', '.join(f'en_{name}' for name in local)};")
+                lines += self.block(node.body, indent + 1)
+                lines.append(f"{pad}  return null;")
+                lines.append(f"{pad}}}")
+            elif isinstance(node, (MethodCall, FunctionCall)):
                 lines.append(f"{pad}{self.expr(node)};")
             else:
                 _fail(self.filename, f"JavaScript does not yet support {type(node).__name__} instructions")

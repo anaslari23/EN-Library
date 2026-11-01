@@ -52,7 +52,13 @@ class MethodCall:
     arguments: list["Expr"]
 
 
-Expr = Union[Literal, Name, Binary, Compare, Index, Contains, Attribute, MethodCall]
+@dataclass(frozen=True)
+class FunctionCall:
+    name: str
+    arguments: list["Expr"]
+
+
+Expr = Union[Literal, Name, Binary, Compare, Index, Contains, Attribute, MethodCall, FunctionCall]
 
 
 @dataclass(frozen=True)
@@ -133,6 +139,13 @@ class MethodDef:
 
 
 @dataclass(frozen=True)
+class FunctionDef:
+    name: str
+    parameters: list[str]
+    body: list["Statement"]
+
+
+@dataclass(frozen=True)
 class ClassDef:
     name: str
     methods: list[MethodDef]
@@ -160,8 +173,8 @@ class Return:
 
 Statement = Union[
     Assign, ReadInput, Display, If, CreateList, CreateDictionary, Append,
-    SetItem, ForEach, While, Break, Continue, ClassDef, MethodDef,
-    CreateInstance, SetAttribute, Return, MethodCall
+    SetItem, ForEach, While, Break, Continue, ClassDef, MethodDef, FunctionDef,
+    CreateInstance, SetAttribute, Return, MethodCall, FunctionCall
 ]
 
 

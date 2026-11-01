@@ -4,7 +4,7 @@ import operator
 from .errors import CodeInEnglishError
 from .ir import (
     Append, Assign, Attribute, Binary, Break, ClassDef, Compare, Contains, Continue,
-    CreateDictionary, CreateInstance, CreateList, Display, ForEach, If, Index,
+    CreateDictionary, CreateInstance, CreateList, Display, ForEach, FunctionCall, FunctionDef, If, Index,
     Literal, MethodCall, Name, Program, ReadInput, Return, SetAttribute, SetItem, While,
 )
 
@@ -23,6 +23,22 @@ class _Break(Exception):
 
 class _Continue(Exception):
     pass
+
+
+class _Function:
+    def __init__(self, name, parameters, body):
+        self.name, self.parameters, self.body = name, parameters, body
+
+    def call(self, args, scope, invoke_block, fail_fn):
+        if len(args) != len(self.parameters):
+            fail_fn(f"function '{self.name}' takes {len(self.parameters)} value(s) but got {len(args)}")
+        frame = dict(scope)
+        frame.update(dict(zip(self.parameters, args)))
+        try:
+            invoke_block(self.body, frame)
+        except _Return as result:
+            return result.value
+        return None
 
 
 class _Class:
@@ -82,6 +98,12 @@ def run(program: Program, read=input, write=print, filename: str = "<string>", s
             if isinstance(target, (_Instance, _Super)):
                 return invoke(target, node.name, args)
             return guard(lambda: getattr(target, node.name)(*args))
+        if isinstance(node, FunctionCall):
+            target = scope.get(node.name)
+            if not isinstance(target, _Function):
+                fail(f"'{node.name}' is not a function")
+            args = [expr(argument, scope) for argument in node.arguments]
+            return target.call(args, scope, block, fail)
         fail(f"unsupported expression {type(node).__name__}")
 
     def invoke(target, name, args):
@@ -164,7 +186,9 @@ def run(program: Program, read=input, write=print, filename: str = "<string>", s
                 setattr(expr(node.value, scope), node.name, expr(node.expression, scope))
             elif isinstance(node, Return):
                 raise _Return(expr(node.value, scope))
-            elif isinstance(node, MethodCall):
+            elif isinstance(node, FunctionDef):
+                scope[node.name] = _Function(node.name, node.parameters, node.body)
+            elif isinstance(node, (MethodCall, FunctionCall)):
                 expr(node, scope)
             else:
                 fail(f"unsupported statement {type(node).__name__}")

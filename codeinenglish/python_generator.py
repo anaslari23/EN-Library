@@ -18,6 +18,8 @@ from .ir import (
     Display,
     Expr,
     ForEach,
+    FunctionCall,
+    FunctionDef,
     If,
     Index,
     Literal,
@@ -86,6 +88,12 @@ def _expression(node: Expr) -> ast.expr:
             receiver, name = _expression(node.value), node.name
         return ast.Call(
             func=ast.Attribute(value=receiver, attr=name, ctx=ast.Load()),
+            args=[_expression(argument) for argument in node.arguments],
+            keywords=[],
+        )
+    if isinstance(node, FunctionCall):
+        return ast.Call(
+            func=ast.Name(id=node.name, ctx=ast.Load()),
             args=[_expression(argument) for argument in node.arguments],
             keywords=[],
         )
@@ -224,7 +232,20 @@ def _statements(nodes: list[Statement]) -> list[ast.stmt]:
             ))
         elif isinstance(node, Return):
             result.append(ast.Return(value=_expression(node.value)))
-        elif isinstance(node, MethodCall):
+        elif isinstance(node, FunctionDef):
+            result.append(
+                ast.FunctionDef(
+                    name=node.name,
+                    args=ast.arguments(
+                        posonlyargs=[],
+                        args=[ast.arg(arg=param) for param in node.parameters],
+                        kwonlyargs=[], kw_defaults=[], defaults=[],
+                    ),
+                    body=_statements(node.body) or [ast.Pass()],
+                    decorator_list=[],
+                )
+            )
+        elif isinstance(node, (MethodCall, FunctionCall)):
             result.append(ast.Expr(value=_expression(node)))
         else:
             raise TypeError(f"unsupported statement IR node: {type(node).__name__}")

@@ -20,6 +20,8 @@ from .ir import (
     Display,
     Expr,
     ForEach,
+    FunctionCall,
+    FunctionDef,
     If,
     Index,
     Literal,
@@ -101,6 +103,10 @@ def _validate_expression(expression: Expr, names: set[str], filename: str, line:
         for argument in expression.arguments:
             _validate_expression(argument, names, filename, line)
         return
+    if isinstance(expression, FunctionCall):
+        for argument in expression.arguments:
+            _validate_expression(argument, names, filename, line)
+        return
     if isinstance(expression, Index):
         _validate_expression(expression.collection, names, filename, line)
         _validate_expression(expression.index, names, filename, line)
@@ -170,6 +176,9 @@ def parse_program(source: str, filename: str = "<string>", known_names: set[str]
             statement = ForEach(frame["name"], frame["collection"], frame["body"])
         elif expected_kind == "while":
             statement = While(frame["condition"], frame["body"])
+        elif expected_kind == "function":
+            loop_scopes.pop()
+            statement = FunctionDef(frame["name"], frame["parameters"], frame["body"])
         elif expected_kind == "method":
             if len(blocks) != 1 or blocks[-1]["kind"] != "class":
                 raise CodeInEnglishError(filename, line_number, "method must be directly inside a class")
@@ -219,9 +228,20 @@ def parse_program(source: str, filename: str = "<string>", known_names: set[str]
             r"(?:define|create)\s+a\s+(?:(?:method|function)\s+(?:called|named)\s+([A-Za-z_][A-Za-z0-9_]*)|(constructor))(?:\s+(?:with\s+parameters?|taking)\s+(.+))?", line
         )
         if method_match:
-            if not blocks or blocks[-1]["kind"] != "class":
-                raise CodeInEnglishError(filename, line_number, "methods must be defined inside a class")
             name, constructor, raw_parameters = method_match.groups()
+            if not blocks or blocks[-1]["kind"] != "class":
+                if constructor:
+                    raise CodeInEnglishError(filename, line_number, "constructors must be defined inside a class")
+                _check_name(name, filename, line_number)
+                parameters = re.split(r"\s+and\s+", raw_parameters) if raw_parameters else []
+                for parameter in parameters:
+                    _check_name(parameter, filename, line_number)
+                if len(parameters) != len(set(parameters)):
+                    raise CodeInEnglishError(filename, line_number, "function parameters must be unique")
+                define_name(name)
+                loop_scopes.append(set(parameters))
+                blocks.append({"kind": "function", "name": name, "parameters": parameters, "body": [], "line": line_number})
+                continue
             if constructor:
                 name = "__init__"
                 if any(method.name == "__init__" for method in blocks[-1]["methods"]):
@@ -236,8 +256,27 @@ def parse_program(source: str, filename: str = "<string>", known_names: set[str]
             blocks.append({"kind": "method", "name": name, "parameters": parameters, "body": [], "line": line_number})
             continue
 
+        to_fn_match = re.fullmatch(r"to\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+(?:with\s+parameters?|taking)\s+(.+?))?:?", line)
+        if to_fn_match:
+            if blocks:
+                raise CodeInEnglishError(filename, line_number, "functions must be defined at the top level")
+            name, raw_parameters = to_fn_match.groups()
+            _check_name(name, filename, line_number)
+            parameters = re.split(r"\s+and\s+", raw_parameters) if raw_parameters else []
+            for parameter in parameters:
+                _check_name(parameter, filename, line_number)
+            if len(parameters) != len(set(parameters)):
+                raise CodeInEnglishError(filename, line_number, "function parameters must be unique")
+            define_name(name)
+            loop_scopes.append(set(parameters))
+            blocks.append({"kind": "function", "name": name, "parameters": parameters, "body": [], "line": line_number})
+            continue
+
         if line in ("end method", "end constructor"):
             close_block("method", line_number)
+            continue
+        if line == "end function":
+            close_block("function", line_number)
             continue
         if line == "end class":
             close_block("class", line_number)
@@ -351,8 +390,8 @@ def parse_program(source: str, filename: str = "<string>", known_names: set[str]
             continue
 
         if line.startswith("return "):
-            if not any(frame["kind"] == "method" for frame in blocks):
-                raise CodeInEnglishError(filename, line_number, "return is only allowed inside a method", kind="unsupported")
+            if not any(frame["kind"] in ("method", "function") for frame in blocks):
+                raise CodeInEnglishError(filename, line_number, "return is only allowed inside a function or method", kind="unsupported")
             value = parse_expression(line[7:], filename=filename, line=line_number)
             _validate_expression(value, visible_names(), filename, line_number)
             append(Return(value))

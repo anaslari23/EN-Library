@@ -12,7 +12,7 @@ import json
 from .errors import CodeInEnglishError
 from .ir import (
     Append, Assign, Attribute, Binary, Break, ClassDef, Compare, Contains, Continue,
-    CreateDictionary, CreateInstance, CreateList, Display, ForEach, If, Index,
+    CreateDictionary, CreateInstance, CreateList, Display, ForEach, FunctionCall, FunctionDef, If, Index,
     Literal, MethodCall, Name, Program, ReadInput, Return, SetAttribute, SetItem, While,
 )
 
@@ -207,6 +207,9 @@ class _Generator:
                 return f"super.m_{'__init__' if node.name == 'init' else node.name}({arguments})"
             extra = f", {arguments}" if arguments else ""
             return f"En.call({self.expr(node.value)}, {json.dumps(node.name)}{extra})"
+        if isinstance(node, FunctionCall):
+            arguments = ", ".join(self.expr(argument) for argument in node.arguments)
+            return f"en_{node.name}({arguments})"
         _fail(self.filename, f"Java does not yet support {type(node).__name__} expressions")
 
     def condition(self, node):
@@ -281,7 +284,9 @@ class _Generator:
                 lines.append(f"{pad}En.setField({self.expr(node.value)}, {json.dumps(node.name)}, {self.expr(node.expression)});")
             elif isinstance(node, Return):
                 lines.append(f"{pad}if (En.T) return {self.expr(node.value)};")
-            elif isinstance(node, MethodCall):
+            elif isinstance(node, FunctionDef):
+                continue  # emitted as a static method on EnProgram
+            elif isinstance(node, (MethodCall, FunctionCall)):
                 lines.append(f"{pad}{self.expr(node)};")
             else:
                 _fail(self.filename, f"Java does not yet support {type(node).__name__} instructions")
@@ -306,6 +311,16 @@ def program_java(program: Program, filename: str) -> str:
     generator = _Generator(filename)
     names = sorted(generator.declared(program.statements))
     body = generator.block(program.statements, 2)
+    functions = []
+    for node in program.statements:
+        if isinstance(node, FunctionDef):
+            params = ", ".join(f"Object en_{p}" for p in node.parameters)
+            functions.append(f"  static Object en_{node.name}({params}) {{")
+            local = sorted(generator.declared(node.body) - set(node.parameters))
+            functions += [f"    Object en_{name} = null;" for name in local]
+            functions += generator.block(node.body, 2)
+            functions.append("    return null;")
+            functions.append("  }")
     main = ["final class EnProgram {  // first class: `java File.java` runs it",
             "  public static void main(String[] args) {",
             "    try {",
@@ -320,6 +335,7 @@ def program_java(program: Program, filename: str) -> str:
             *[f"    Object en_{name} = null;" for name in names],
             *body,
             "  }",
+            *functions,
             "}"]
     classes = [line for node in program.statements if isinstance(node, ClassDef) for line in generator.class_def(node)]
     return "\n".join([_IMPORTS, *main, *classes, _RUNTIME, ""])

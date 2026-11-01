@@ -3,7 +3,7 @@ import ast
 import re
 
 from .errors import CodeInEnglishError
-from .ir import Attribute, Binary, Compare, Contains, Expr, Index, Literal, MethodCall, Name
+from .ir import Attribute, Binary, Compare, Contains, Expr, FunctionCall, Index, Literal, MethodCall, Name
 
 
 _TOKEN = re.compile(
@@ -169,13 +169,22 @@ class _ExpressionParser:
 
 def parse_expression(text: str, *, filename: str, line: int) -> Expr:
     """Parse a documented English value or expression into the translator IR."""
-    call = re.fullmatch(r"(?:call|tell)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\.|\s+to\s+)([A-Za-z_][A-Za-z0-9_]*)(?:\s+with\s+(.+))?", text.strip())
-    if call:
-        receiver, method, raw_arguments = call.groups()
+    clean_text = text.strip()
+    method_call = re.fullmatch(r"(?:call|tell)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\.|\s+to\s+)([A-Za-z_][A-Za-z0-9_]*)(?:\s+with\s+(.+))?", clean_text)
+    if method_call:
+        receiver, method, raw_arguments = method_call.groups()
         arguments = []
         if raw_arguments:
             parts = _split_arguments(raw_arguments)
             arguments = [parse_expression(part, filename=filename, line=line) for part in parts]
         return MethodCall(Name(receiver), method, arguments)
-    tokens = _tokens(text, filename, line)
+    fn_call = re.fullmatch(r"call\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+with\s+(.+))?", clean_text)
+    if fn_call:
+        name, raw_arguments = fn_call.groups()
+        arguments = []
+        if raw_arguments:
+            parts = _split_arguments(raw_arguments)
+            arguments = [parse_expression(part, filename=filename, line=line) for part in parts]
+        return FunctionCall(name, arguments)
+    tokens = _tokens(clean_text, filename, line)
     return _ExpressionParser(tokens, filename, line).parse()

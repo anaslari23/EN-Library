@@ -8,7 +8,10 @@ from __future__ import annotations
 import json
 
 from .errors import CodeInEnglishError
-from .ir import Append, Assign, Binary, Break, Compare, Continue, CreateList, Display, ForEach, If, Literal, Name, Program, While
+from .ir import (
+    Append, Assign, Binary, Break, Compare, Continue, CreateList, Display,
+    ForEach, FunctionCall, FunctionDef, If, Literal, Name, Program, Return, While
+)
 
 _LIMIT = 1000  # items per list
 
@@ -38,6 +41,8 @@ class _Generator:
             if self.kind(node.left) != "i" or self.kind(node.right) != "i":
                 _fail(self.filename, "C output does not join or repeat text; use numbers with plus, minus and times")
             return "i"
+        if isinstance(node, FunctionCall):
+            return "i"
         _fail(self.filename, f"C output supports the core language only (not {type(node).__name__})")
 
     def expr(self, node):
@@ -45,6 +50,9 @@ class _Generator:
             return f"{node.value}LL" if isinstance(node.value, int) else json.dumps(node.value, ensure_ascii=True)
         if isinstance(node, Name):
             return f"e_{node.identifier}"
+        if isinstance(node, FunctionCall):
+            args = ", ".join(self.expr(arg) for arg in node.arguments)
+            return f"e_{node.name}({args})"
         return f"({self.expr(node.left)} {node.operator} {self.expr(node.right)})"
 
     def condition(self, node):
@@ -71,6 +79,10 @@ class _Generator:
                 self.types[node.name] = "i"
                 self.scan(node.body)
             elif isinstance(node, While):
+                self.scan(node.body)
+            elif isinstance(node, FunctionDef):
+                for p in node.parameters:
+                    self.types[p] = "i"
                 self.scan(node.body)
             elif isinstance(node, If):
                 self.scan(node.body)
@@ -115,6 +127,12 @@ class _Generator:
                 lines.append(f"{pad}break;")
             elif isinstance(node, Continue):
                 lines.append(f"{pad}continue;")
+            elif isinstance(node, Return):
+                lines.append(f"{pad}return {self.expr(node.value)};")
+            elif isinstance(node, FunctionDef):
+                continue
+            elif isinstance(node, FunctionCall):
+                lines.append(f"{pad}{self.expr(node)};")
             else:
                 _fail(self.filename, f"C output supports the core language only (not {type(node).__name__})")
         return lines
@@ -123,6 +141,14 @@ class _Generator:
 def program_c(program: Program, filename: str) -> str:
     generator = _Generator(filename)
     generator.scan(program.statements)
+    fn_defs = []
+    for node in program.statements:
+        if isinstance(node, FunctionDef):
+            params = ", ".join(f"long long e_{p}" for p in node.parameters)
+            fn_defs.append(f"static long long e_{node.name}({params}) {{")
+            fn_defs += generator.block(node.body, 1)
+            fn_defs.append("    return 0;")
+            fn_defs.append("}")
     body = generator.block(program.statements, 1)
     declarations = [f"    long long e_{name}[{_LIMIT}]; int n_e_{name};" if kind == "l"
                     else f"    {'char *' if kind == 's' else 'long long '}e_{name};" for name, kind in generator.types.items()]
@@ -130,5 +156,6 @@ def program_c(program: Program, filename: str) -> str:
     header = ["#include <stdio.h>", "#include <stdlib.h>", "#include <string.h>",
               '#pragma GCC diagnostic ignored "-Wtautological-compare"  /* a program may compare a name with itself */',
               f'#define PUSH(a, n, v) do {{ if ((n) >= {_LIMIT}) {{ fputs("list too long\\n", stderr); exit(1); }} (a)[(n)++] = (v); }} while (0)',
+              *fn_defs,
               "int main(void) {"]
     return "\n".join([*header, *declarations, *quiet, *body, "    return 0;", "}", ""])
